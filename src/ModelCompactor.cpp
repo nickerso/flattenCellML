@@ -54,7 +54,9 @@ public:
         std::wstring modelName = modelIn->name();
         std::wcout << L"Compacting model " << modelName << L" to a single CellML 1.0 component."
                    << std::endl;
-        mModelIn = modelIn;
+        // grab a clone of the source model before we do anything that might instantiate imports.
+        mModelIn = QueryInterface(modelIn->clone(true));
+        mModelIn->fullyInstantiateImports();
 
         // Create the output model
         ObjRef<iface::cellml_api::CellMLBootstrap> cbs = CreateCellMLBootstrap();
@@ -67,6 +69,34 @@ public:
         component->name(L"model");
         component->cmetaId(L"CompactedModelComponent");
         mModelOut->addElement(component);
+
+        component = mModelOut->createComponent();
+        component->name(L"variables");
+        component->cmetaId(L"OriginalVariables");
+        mModelOut->addElement(component);
+
+        ObjRef<iface::cellml_api::CellMLComponentSet> localComponents = mModelIn->localComponents();
+        ObjRef<iface::cellml_api::CellMLComponentIterator> lci = localComponents->iterateComponents();
+        std::wstring vname;
+        while (true)
+        {
+            ObjRef<iface::cellml_api::CellMLComponent> lc = lci->nextComponent();
+            if (lc == NULL) break;
+            cname = lc->name();
+            std::wcout << L"Adding variables from component: " << cname << L"; to the new model."
+                          << std::endl;
+            ObjRef<iface::cellml_api::CellMLVariableSet> vs = lc->variables();
+            ObjRef<iface::cellml_api::CellMLVariableIterator> vsi = vs->iterateVariables();
+            while (true)
+            {
+                ObjRef<iface::cellml_api::CellMLVariable> v = vsi->nextVariable();
+                if (v == NULL) break;
+                vname = v->name();
+                std::wcout << L"\t" << vname << L" ==> " << cname << L"_" << vname << std::endl;
+                ObjRef<iface::cellml_api::CellMLVariable> source = v->sourceVariable();
+                std::wcout << L"\t\tmapped to source: " << source->name() << std::endl;
+            }
+        }
 
         return mModelOut;
     }
