@@ -54,6 +54,7 @@ INCLUDE_DIRECTORIES(
 SET(flattenCellmlModel_SRCS
   src/flattenCellmlModel.cpp
   src/VersionConverter.cpp
+  src/ModelCompactor.cpp
   src/utils.cpp
 )
 

@@ -9,25 +9,42 @@
 
 #include "utils.hpp"
 #include "VersionConverter.hpp"
+#include "ModelCompactor.hpp"
 
 // Save typing
 namespace cml = iface::cellml_api;
 
+static void usage(const char* progName)
+{
+    std::cerr << "Usage: " << progName << " <model | variables> <modelURL> [output file]" << std::endl;
+    std::cerr << "The first argument defines the flattening mode.\n";
+    std::cerr << "  model:      flattens the model maintaining the modular structure.\n";
+    std::cerr << "  variables:  create a single component defining all the variables\n"
+                 "              specified in the top level of the given model.\n";
+    std::cerr << std::endl;
+}
+
 int main(int argc, char* argv[])
 {
-    // We should have a model URI in argv[1]
-    if (argc < 2)
+    // We should have a model URI in argv[2]
+    if (argc < 3)
     {
-        std::cerr << "Usage: " << argv[0] << " <modelURL> [output file]" << std::endl;
+        usage(argv[0]);
         return -1;
     }
-    std::wstring model_url = string2wstring(argv[1]);
+    std::string mode(argv[1]);
+    std::wstring model_url = string2wstring(argv[2]);
     const char* output_file_name = NULL;
-    if (argc == 3)
+    if (argc == 4)
     {
-        output_file_name = argv[2];
+        output_file_name = argv[3];
     }
-
+    if (!((mode == "model") || (mode == "variables")))
+    {
+        std::cerr << "A flattening mode of either \"model\" or \"variables\" is required." << std::endl;
+        usage(argv[0]);
+        return -2;
+    }
     // Bootstrap the API
     ObjRef<cml::CellMLBootstrap> cbs = CreateCellMLBootstrap();
     // Get a model loader
@@ -37,7 +54,7 @@ int main(int argc, char* argv[])
     try
     {
         model = ml->loadFromURL(model_url.c_str());
-        model->fullyInstantiateImports(); // Make sure we have all of it
+        if (mode == "model") model->fullyInstantiateImports(); // Make sure we have all of it
     }
     catch (cml::CellMLException& e)
     {
@@ -49,11 +66,14 @@ int main(int argc, char* argv[])
     // Print the model's name & id to indicate successful load
     std::wstring model_id = model->cmetaId();
     std::wstring model_name = model->name();
-    std::wcout << "Loaded model '" << model_name.c_str() << "' id '" << model_id.c_str()
-               << "' with all imports." << std::endl;
+    std::wcout << "Loaded model '" << model_name.c_str() << "' id '" << model_id.c_str();
+    if (mode == "model") std::wcout << "' with all imports." << std::endl;
+    else std::wcout << "'." << std::endl;
 
     // Now we can do stuff
-    ObjRef<cml::Model> new_model = flattenModel(model);
+    ObjRef<cml::Model> new_model;
+    if (mode == "model") new_model = flattenModel(model);
+    else new_model = compactModel(model);
 
     // Print the model to file
     std::wstring content = new_model->serialisedText();
