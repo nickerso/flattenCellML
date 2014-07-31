@@ -157,6 +157,9 @@ private:
     /// Manager for annotations on models
     iface::cellml_services::AnnotationSet* mAnnoSet;
 
+    /// Root group used in the new model
+    cml::Group *mRootGroup;
+
     /// Units we have already copied into the new model
     std::set<std::pair<std::wstring,std::wstring> > mCopiedUnits;
 
@@ -170,6 +173,7 @@ public:
         mModelIn = NULL;
         mModelOut = NULL;
         mAnnoSet = NULL;
+        mRootGroup = NULL;
         mCopiedUnits.clear();
         mCompNames.clear();
     }
@@ -692,16 +696,21 @@ private:
 
             if (copyInto == NULL)
             {
-                // Create a new group
-                RETURN_INTO_OBJREF(group, cml::Group, mModelOut->createGroup());
-                mModelOut->addElement(group);
-                RETURN_INTO_OBJREF(rref, cml::RelationshipRef,
-                                   mModelOut->createRelationshipRef());
-                rref->setRelationshipName(L"", L"encapsulation");
-                group->addElement(rref);
+                // Create a new group, if no root exists
+
+                if (mRootGroup == NULL)
+                {
+                    RETURN_INTO_OBJREF(group, cml::Group, mModelOut->createGroup());
+                    mRootGroup = group;
+                    mModelOut->addElement(mRootGroup);
+                    RETURN_INTO_OBJREF(rref, cml::RelationshipRef,
+                                      mModelOut->createRelationshipRef());
+                    rref->setRelationshipName(L"", L"encapsulation");
+                    mRootGroup->addElement(rref);
+                }
 
                 // Add this component as the root
-                group->addElement(newref);
+                mRootGroup->addElement(newref);
             }
             else
             {
