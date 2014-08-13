@@ -187,3 +187,30 @@ std::wstring CellmlUtils::createUnitsFromCanonical(iface::cellml_api::Model *mod
     unitsName = units->name();
     return unitsName;
 }
+
+ObjRef<iface::cellml_api::CellMLVariable>
+CellmlUtils::createVariableWithMatchingUnits(iface::cellml_api::CellMLComponent* component,
+                                             iface::cellml_api::CellMLVariable* sourceVariable)
+{
+    std::wstring s = uniqueVariableName(sourceVariable->componentName(), sourceVariable->name());
+    s = uniqueSetName(component->variables(), s);
+    ObjRef<iface::cellml_api::CellMLVariable> variable = createVariable(component, s);
+    try
+    {
+        ObjRef<iface::cellml_api::Units> units = sourceVariable->unitsElement();
+        s = defineUnits(component->modelElement(), units);
+    }
+    catch (...)
+    {
+        // we couldn't get a corresponding units element in the source model - could either be a
+        // built-in unit or an error
+        s = sourceVariable->unitsName();
+        if (! builtinUnits(s))
+        {
+            std::wcerr << L"ERROR: unable to find the source units: " << s << std::endl;
+            return NULL;
+        }
+    }
+    variable->unitsName(s);
+    return variable;
+}

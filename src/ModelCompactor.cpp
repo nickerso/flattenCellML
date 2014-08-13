@@ -29,39 +29,12 @@ private:
         return unitsName;
     }
 
-    ObjRef<iface::cellml_api::CellMLVariable>
-    createVariableWithMatchingUnits(iface::cellml_api::CellMLComponent* component,
-                                    iface::cellml_api::CellMLVariable* sourceVariable)
-    {
-        std::wstring s = mCellml.uniqueVariableName(sourceVariable->componentName(), sourceVariable->name());
-        s = mCellml.uniqueSetName(component->variables(), s);
-        ObjRef<iface::cellml_api::CellMLVariable> variable =
-                mCellml.createVariable(component, s);
-        try
-        {
-            ObjRef<iface::cellml_api::Units> units = sourceVariable->unitsElement();
-            s = mCellml.defineUnits(mModelOut, units);
-        }
-        catch (...)
-        {
-            // we couldn't get a corresponding units element in the source model - could either be a
-            // built-in unit or an error
-            s = sourceVariable->unitsName();
-            if (! mCellml.builtinUnits(s))
-            {
-                std::wcerr << L"ERROR: unable to find the source units: " << s << std::endl;
-                return NULL;
-            }
-        }
-        variable->unitsName(s);
-        return variable;
-    }
-
     int mapLocalVariable(iface::cellml_api::CellMLVariable* sourceVariable,
                          iface::cellml_api::CellMLComponent* destinationComponent,
                          iface::cellml_api::CellMLComponent* compactedModel)
     {
-        ObjRef<iface::cellml_api::CellMLVariable> variable = createVariableWithMatchingUnits(destinationComponent, sourceVariable);
+        ObjRef<iface::cellml_api::CellMLVariable> variable =
+                mCellml.createVariableWithMatchingUnits(destinationComponent, sourceVariable);
         // always defined in the compated model component
         variable->publicInterface(iface::cellml_api::INTERFACE_IN);
         // and connect it to the source variable
@@ -76,7 +49,8 @@ private:
                                                                             iface::cellml_api::CellMLVariable* sourceVariable)
     {
         if (mSourceVariables.count(sourceVariable)) return mSourceVariables[sourceVariable];
-        ObjRef<iface::cellml_api::CellMLVariable> variable = createVariableWithMatchingUnits(compactedModel, sourceVariable);
+        ObjRef<iface::cellml_api::CellMLVariable> variable =
+                mCellml.createVariableWithMatchingUnits(compactedModel, sourceVariable);
         variable->publicInterface(iface::cellml_api::INTERFACE_OUT);
         mSourceVariables[sourceVariable] = variable;
         return variable;

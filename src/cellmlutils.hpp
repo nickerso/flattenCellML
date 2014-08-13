@@ -25,6 +25,19 @@ public:
     createVariable(iface::cellml_api::CellMLComponent* component, const std::wstring& name) const;
 
     /**
+     * Create a variable in the given component which has units which are equivalent to those of the source variable
+     * in its model. The units for the variable will be defined in the given component's model if they do not already
+     * exist.
+     * @param component The component in which to create the variable.
+     * @param sourceVariable The source variable which to duplicate in the given component. Expected to originate from
+     * a different model.
+     * @return The newly created variable on success; otherwise NULL.
+     */
+    ObjRef<iface::cellml_api::CellMLVariable>
+    createVariableWithMatchingUnits(iface::cellml_api::CellMLComponent* component,
+                                    iface::cellml_api::CellMLVariable* sourceVariable);
+
+    /**
      * Converts the given source units to their cononical representation and ensures they are defined
      * in the given model.
      * @param model The model in which to ensure units is defined.
