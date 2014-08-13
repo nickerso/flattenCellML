@@ -78,6 +78,70 @@ static std::wstring findMatchingUnits(iface::cellml_api::Model* model, iface::ce
     return matchingUnitsName;
 }
 
+static ObjRef<iface::cellml_api::Connection>
+findConnection(ObjRef<iface::cellml_api::ConnectionSet> connections, const std::wstring& c1,
+               const std::wstring& c2, int* order)
+{
+    ObjRef<iface::cellml_api::Connection> connection;
+    ObjRef<iface::cellml_api::ConnectionIterator> ci = connections->iterateConnections();
+    while (true)
+    {
+        connection = ci->nextConnection();
+        if (connection == NULL) break;
+        ObjRef<iface::cellml_api::MapComponents> cmap = connection->componentMapping();
+        const std::wstring& cmap1 = cmap->firstComponentName();
+        const std::wstring& cmap2 = cmap->secondComponentName();
+        if ((cmap1 == c1) && (cmap2 == c2))
+        {
+            *order = 1;
+            break;
+        }
+        else if ((cmap1 == c2) && (cmap2 == c1))
+        {
+            *order = 2;
+            break;
+        }
+    }
+    return connection;
+}
+
+static ObjRef<iface::cellml_api::Connection>
+createConnection(iface::cellml_api::Model* model, const std::wstring& c1, const std::wstring& c2)
+{
+    ObjRef<iface::cellml_api::Connection> connection = model->createConnection();
+    model->addElement(connection);
+    ObjRef<iface::cellml_api::MapComponents> cmap = connection->componentMapping();
+    cmap->firstComponentName(c1);
+    cmap->secondComponentName(c2);
+    return connection;
+}
+
+static void
+defineMapVariables(iface::cellml_api::Model* model, iface::cellml_api::Connection* connection,
+                   const std::wstring& v1, const std::wstring& v2)
+{
+    ObjRef<iface::cellml_api::MapVariablesSet> mvs = connection->variableMappings();
+    bool found = false;
+    ObjRef<iface::cellml_api::MapVariablesIterator> mvi = mvs->iterateMapVariables();
+    while (true)
+    {
+        ObjRef<iface::cellml_api::MapVariables> vmap = mvi->nextMapVariable();
+        if (vmap == NULL) break;
+        if ((vmap->firstVariableName() == v1) && (vmap->secondVariableName() == v2))
+        {
+            found = true;
+            break;
+        }
+    }
+    if (!found)
+    {
+        ObjRef<iface::cellml_api::MapVariables> vmap = model->createMapVariables();
+        connection->addElement(vmap);
+        vmap->firstVariableName(v1);
+        vmap->secondVariableName(v2);
+    }
+}
+
 CellmlUtils::CellmlUtils()
 {
     mBootstrap = CreateCellMLBootstrap();
@@ -213,4 +277,30 @@ CellmlUtils::createVariableWithMatchingUnits(iface::cellml_api::CellMLComponent*
     }
     variable->unitsName(s);
     return variable;
+}
+
+int CellmlUtils::connectVariables(iface::cellml_api::CellMLVariable *v1, iface::cellml_api::CellMLVariable *v2)
+{
+    int returnCode = 0;
+    try
+    {
+        int order = 0;
+        ObjRef<iface::cellml_api::Connection> connection = findConnection(v1->modelElement()->connections(),
+                                                                          v1->componentName(), v2->componentName(), &order);
+        if (connection == NULL)
+        {
+            connection = createConnection(v1->modelElement(), v1->componentName(), v2->componentName());
+            order = 1;
+        }
+        if (order == 1) defineMapVariables(v1->modelElement(), connection, v1->name(), v2->name());
+        else defineMapVariables(v1->modelElement(), connection, v2->name(), v1->name());
+    }
+    catch (...)
+    {
+        std::wcerr << L"CellmlUtils::connectVariables: Error caught trying to define connection:"
+                   << v1->componentName() << L"/" << v1->name() << L" <==> "
+                   << v2->componentName() << L"/" << v2->name() << std::endl;
+        return -1;
+    }
+    return returnCode;
 }

@@ -89,6 +89,15 @@ public:
      */
     bool builtinUnits(const std::wstring& name);
 
+    /**
+     * Ensure there exists a connection between the two variables. Will do nothing if connection already exists,
+     * otherwise will create the connection.
+     * @param v1 A variable to connect to v2.
+     * @param v2 A variable to connect to v1.
+     * @return zero on success.
+     */
+    int connectVariables(iface::cellml_api::CellMLVariable* v1, iface::cellml_api::CellMLVariable* v2);
+
 private:
     ObjRef<iface::cellml_api::CellMLBootstrap> mBootstrap;
     ObjRef<iface::cellml_api::Model> mSourceModel;

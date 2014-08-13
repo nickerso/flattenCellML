@@ -41,7 +41,7 @@ private:
         ObjRef<iface::cellml_api::CellMLVariable> source = sourceVariable->sourceVariable();
         ObjRef<iface::cellml_api::CellMLVariable> compactedModelSourceVariable =
                 defineCompactedSourceVariable(compactedModel, source);
-        //mCellml.connectVariables(compactedModelSourceVariable, variable);
+        mCellml.connectVariables(compactedModelSourceVariable, variable);
         return 0;
     }
 
