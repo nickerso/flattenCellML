@@ -2,8 +2,7 @@
 #include <iostream>
 #include <sstream>
 #include <fstream>
-#include <cassert>
-#include <wchar.h>
+#include <map>
 
 #include "ModelCompactor.hpp"
 #include "cellmlutils.hpp"
@@ -19,6 +18,8 @@ private:
     ObjRef<iface::cellml_api::Model> mModelIn;
     ObjRef<iface::cellml_api::Model> mModelOut;
     CellmlUtils mCellml;
+    // keeping track of source variables, should work?
+    std::map<ObjRef<iface::cellml_api::CellMLVariable>, ObjRef<iface::cellml_api::CellMLVariable> > mSourceVariables;
     // to keep track of things we might want to report to the user?
     std::vector<std::wstring> mReport;
 
@@ -28,17 +29,17 @@ private:
         return unitsName;
     }
 
-    int mapLocalVariable(iface::cellml_api::CellMLComponent* sourceComponent,
-                         iface::cellml_api::CellMLVariable* sourceVariable,
-                         iface::cellml_api::CellMLComponent* destinationComponent)
+    ObjRef<iface::cellml_api::CellMLVariable>
+    createVariableWithMatchingUnits(iface::cellml_api::CellMLComponent* component,
+                                    iface::cellml_api::CellMLVariable* sourceVariable)
     {
-        std::wstring s = mCellml.uniqueVariableName(sourceComponent->name(), sourceVariable->name());
+        std::wstring s = mCellml.uniqueVariableName(sourceVariable->componentName(), sourceVariable->name());
+        s = mCellml.uniqueSetName(component->variables(), s);
         ObjRef<iface::cellml_api::CellMLVariable> variable =
-                mCellml.createVariable(destinationComponent, s, sourceVariable->cmetaId());
-        ObjRef<iface::cellml_api::Units> units;
+                mCellml.createVariable(component, s);
         try
         {
-            units = sourceVariable->unitsElement();
+            ObjRef<iface::cellml_api::Units> units = sourceVariable->unitsElement();
             s = mCellml.defineUnits(mModelOut, units);
         }
         catch (...)
@@ -49,20 +50,39 @@ private:
             if (! mCellml.builtinUnits(s))
             {
                 std::wcerr << L"ERROR: unable to find the source units: " << s << std::endl;
-                return -1;
+                return NULL;
             }
         }
         variable->unitsName(s);
-        // initial value -> always goes to an equation (v = 1; or v1 = v2)
+        return variable;
+    }
+
+    int mapLocalVariable(iface::cellml_api::CellMLVariable* sourceVariable,
+                         iface::cellml_api::CellMLComponent* destinationComponent,
+                         iface::cellml_api::CellMLComponent* compactedModel)
+    {
+        ObjRef<iface::cellml_api::CellMLVariable> variable = createVariableWithMatchingUnits(destinationComponent, sourceVariable);
+        // always defined in the compated model component
+        variable->publicInterface(iface::cellml_api::INTERFACE_IN);
+        // and connect it to the source variable
+        ObjRef<iface::cellml_api::CellMLVariable> source = sourceVariable->sourceVariable();
+        ObjRef<iface::cellml_api::CellMLVariable> compactedModelSourceVariable =
+                defineCompactedSourceVariable(compactedModel, source);
+        //mCellml.connectVariables(compactedModelSourceVariable, variable);
         return 0;
     }
 
+    ObjRef<iface::cellml_api::CellMLVariable> defineCompactedSourceVariable(iface::cellml_api::CellMLComponent* compactedModel,
+                                                                            iface::cellml_api::CellMLVariable* sourceVariable)
+    {
+        if (mSourceVariables.count(sourceVariable)) return mSourceVariables[sourceVariable];
+        ObjRef<iface::cellml_api::CellMLVariable> variable = createVariableWithMatchingUnits(compactedModel, sourceVariable);
+        variable->publicInterface(iface::cellml_api::INTERFACE_OUT);
+        mSourceVariables[sourceVariable] = variable;
+        return variable;
+    }
+
 public:
-    /**
-     * The main interface to the model compactor.
-     * @param modelIn The model to compact down to a single component.
-     * @return The newly created model containing a single component defining the compacted model.
-     */
     ObjRef<iface::cellml_api::Model> CompactModel(iface::cellml_api::Model* modelIn)
     {
         std::wstring modelName = modelIn->name();
@@ -78,10 +98,10 @@ public:
         mModelOut->name(cname);
         mModelOut->cmetaId(mModelIn->cmetaId());
 
-        ObjRef<iface::cellml_api::CellMLComponent> localComponent =
+        ObjRef<iface::cellml_api::CellMLComponent> compactedComponent =
                 mCellml.createComponent(mModelOut, L"compactedModelComponent", L"CompactedModelComponent");
 
-        ObjRef<iface::cellml_api::CellMLComponent> compactedComponent =
+        ObjRef<iface::cellml_api::CellMLComponent> localComponent =
                 mCellml.createComponent(mModelOut, L"sourceModelVariables", L"OriginalVariables");
 
         if (mCellml.setSourceModel(mModelIn) != 0)
@@ -109,7 +129,7 @@ public:
                 vname = v->name();
                 tmpName = mCellml.uniqueVariableName(cname, vname);
                 std::wcout << L"\t" << vname << L" ==> " << tmpName << std::endl;
-                if (mapLocalVariable(lc, v, localComponent) == 0)
+                if (mapLocalVariable(v, localComponent, compactedComponent) == 0)
                 {
                     ObjRef<iface::cellml_api::CellMLVariable> source = v->sourceVariable();
                     std::wcout << L"\t\tmapped to source: " << source->name() << std::endl;

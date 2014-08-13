@@ -22,8 +22,7 @@ public:
                     const std::wstring& cmetaId) const;
 
     ObjRef<iface::cellml_api::CellMLVariable>
-    createVariable(iface::cellml_api::CellMLComponent* component, const std::wstring& name,
-                   const std::wstring& cmetaId) const;
+    createVariable(iface::cellml_api::CellMLComponent* component, const std::wstring& name) const;
 
     /**
      * Converts the given source units to their cononical representation and ensures they are defined

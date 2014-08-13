@@ -106,12 +106,10 @@ CellmlUtils::createComponent(iface::cellml_api::Model *model, const std::wstring
 }
 
 ObjRef<iface::cellml_api::CellMLVariable>
-CellmlUtils::createVariable(iface::cellml_api::CellMLComponent *component, const std::wstring &name,
-                            const std::wstring &cmetaId) const
+CellmlUtils::createVariable(iface::cellml_api::CellMLComponent *component, const std::wstring &name) const
 {
     ObjRef<iface::cellml_api::CellMLVariable> variable = component->modelElement()->createCellMLVariable();
     variable->name(name);
-    variable->cmetaId(cmetaId);
     component->addElement(variable);
     return variable;
 }
