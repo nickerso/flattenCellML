@@ -4,33 +4,9 @@
 #include <fstream>
 #include <cassert>
 #include <wchar.h>
-#include <set>
-#include <map>
-#include <vector>
-
-
-// This header file provides C++ specific templates to make working with the API
-// easier.
-#include "cellml-api-cxx-support.hpp"
-
-// This is the standard C++ interface for the core CellML API.
-#include <IfaceCellML_APISPEC.hxx>
-// CellML DOM implementation
-#include <IfaceDOM_APISPEC.hxx>
-
-// This is a C++ binding specific header that defines how to get the bootstrap
-// object.
-#include <CellMLBootstrap.hpp>
-
-// For user annotations
-#include <IfaceAnnoTools.hxx>
-#include <AnnoToolsBootstrap.hpp>
-
-// For finding relevant components
-#include <IfaceCeVAS.hxx>
-#include <CeVASBootstrap.hpp>
 
 #include "ModelCompactor.hpp"
+#include "cellmlutils.hpp"
 
 // XML Namespaces
 #define MATHML_NS L"http://www.w3.org/1998/Math/MathML"
@@ -42,14 +18,9 @@ class ModelCompactor
 private:
     ObjRef<iface::cellml_api::Model> mModelIn;
     ObjRef<iface::cellml_api::Model> mModelOut;
-
-    std::wstring uniqueVariableName(const std::wstring& cname, const std::wstring& vname) const
-    {
-        std::wstring name = cname;
-        name += L"_";
-        name += vname;
-        return name;
-    }
+    CellmlUtils mCellml;
+    // to keep track of things we might want to report to the user?
+    std::vector<std::wstring> mReport;
 
     std::wstring defineUnits(iface::cellml_api::Units* sourceUnits)
     {
@@ -57,25 +28,29 @@ private:
         return unitsName;
     }
 
-    int mapLocalVariable(iface::cellml_api::CellMLComponent* sourceComponent, iface::cellml_api::CellMLVariable* sourceVariable,
+    int mapLocalVariable(iface::cellml_api::CellMLComponent* sourceComponent,
+                         iface::cellml_api::CellMLVariable* sourceVariable,
                          iface::cellml_api::CellMLComponent* destinationComponent)
     {
-        ObjRef<iface::cellml_api::CellMLVariable> variable = mModelOut->createCellMLVariable();
-        std::wstring s = uniqueVariableName(sourceComponent->name(), sourceVariable->name());
-        variable->name(s);
-        s = variable->cmetaId();
-        if (!s.empty()) variable->cmetaId(s);
-        destinationComponent->addElement(variable);
+        std::wstring s = mCellml.uniqueVariableName(sourceComponent->name(), sourceVariable->name());
+        ObjRef<iface::cellml_api::CellMLVariable> variable =
+                mCellml.createVariable(destinationComponent, s, sourceVariable->cmetaId());
         ObjRef<iface::cellml_api::Units> units;
         try
         {
             units = sourceVariable->unitsElement();
-            s = defineUnits(units);
+            s = mCellml.defineUnits(mModelOut, units);
         }
         catch (...)
         {
-            // pretty dumb way to indicate that there is no corresponding units element (i.e., its a built in units)
+            // we couldn't get a corresponding units element in the source model - could either be a
+            // built-in unit or an error
             s = sourceVariable->unitsName();
+            if (! mCellml.builtinUnits(s))
+            {
+                std::wcerr << L"ERROR: unable to find the source units: " << s << std::endl;
+                return -1;
+            }
         }
         variable->unitsName(s);
         // initial value -> always goes to an equation (v = 1; or v1 = v2)
@@ -98,21 +73,22 @@ public:
         mModelIn->fullyInstantiateImports();
 
         // Create the output model
-        ObjRef<iface::cellml_api::CellMLBootstrap> cbs = CreateCellMLBootstrap();
-        mModelOut = cbs->createModel(L"1.0");
+        mModelOut = mCellml.createModel();
         std::wstring cname = L"Compacted__" + modelName;
         mModelOut->name(cname);
         mModelOut->cmetaId(mModelIn->cmetaId());
 
-        ObjRef<iface::cellml_api::CellMLComponent> localComponent = mModelOut->createComponent();
-        localComponent->name(L"compactedModelComponent");
-        localComponent->cmetaId(L"CompactedModelComponent");
-        mModelOut->addElement(localComponent);
+        ObjRef<iface::cellml_api::CellMLComponent> localComponent =
+                mCellml.createComponent(mModelOut, L"compactedModelComponent", L"CompactedModelComponent");
 
-        ObjRef<iface::cellml_api::CellMLComponent> compactedComponent = mModelOut->createComponent();
-        compactedComponent->name(L"sourceModelVariables");
-        compactedComponent->cmetaId(L"OriginalVariables");
-        mModelOut->addElement(compactedComponent);
+        ObjRef<iface::cellml_api::CellMLComponent> compactedComponent =
+                mCellml.createComponent(mModelOut, L"sourceModelVariables", L"OriginalVariables");
+
+        if (mCellml.setSourceModel(mModelIn) != 0)
+        {
+            std::wcerr << L"Doh!" << std::endl;
+            return NULL;
+        }
 
         ObjRef<iface::cellml_api::CellMLComponentSet> localComponents = mModelIn->localComponents();
         ObjRef<iface::cellml_api::CellMLComponentIterator> lci = localComponents->iterateComponents();
@@ -131,11 +107,18 @@ public:
                 ObjRef<iface::cellml_api::CellMLVariable> v = vsi->nextVariable();
                 if (v == NULL) break;
                 vname = v->name();
-                tmpName = uniqueVariableName(cname, vname);
+                tmpName = mCellml.uniqueVariableName(cname, vname);
                 std::wcout << L"\t" << vname << L" ==> " << tmpName << std::endl;
-                mapLocalVariable(lc, v, localComponent);
-                ObjRef<iface::cellml_api::CellMLVariable> source = v->sourceVariable();
-                std::wcout << L"\t\tmapped to source: " << source->name() << std::endl;
+                if (mapLocalVariable(lc, v, localComponent) == 0)
+                {
+                    ObjRef<iface::cellml_api::CellMLVariable> source = v->sourceVariable();
+                    std::wcout << L"\t\tmapped to source: " << source->name() << std::endl;
+                }
+                else
+                {
+                    std::wcerr << L"Error mapping local variable?" << std::endl;
+                    return NULL;
+                }
             }
         }
 

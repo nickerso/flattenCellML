@@ -75,6 +75,12 @@ int main(int argc, char* argv[])
     if (mode == "model") new_model = flattenModel(model);
     else new_model = compactModel(model);
 
+    if (new_model == NULL)
+    {
+        std::cerr << "Something went wrong!" << std::endl;
+        return 2;
+    }
+
     // Print the model to file
     std::wstring content = new_model->serialisedText();
     if (output_file_name != NULL)
