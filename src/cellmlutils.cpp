@@ -156,6 +156,7 @@ static int getInitialValue(iface::cellml_api::CellMLVariable* variable, double* 
         }
         else
         {
+            // @todo need to ensure unit conversion happens.
             // numerical initial_value
             *value = variable->initialValueValue();
             return 1;
