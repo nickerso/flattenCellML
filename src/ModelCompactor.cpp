@@ -41,18 +41,31 @@ private:
         ObjRef<iface::cellml_api::CellMLVariable> source = sourceVariable->sourceVariable();
         ObjRef<iface::cellml_api::CellMLVariable> compactedModelSourceVariable =
                 defineCompactedSourceVariable(compactedModel, source);
+        if (compactedModelSourceVariable == NULL)
+        {
+            std::wcerr << L"ERROR compacting source variable: " << source->componentName() << L" / "
+                       << source->name() << std::endl;
+            return -1;
+        }
         mCellml.connectVariables(compactedModelSourceVariable, variable);
         return 0;
     }
 
-    ObjRef<iface::cellml_api::CellMLVariable> defineCompactedSourceVariable(iface::cellml_api::CellMLComponent* compactedModel,
-                                                                            iface::cellml_api::CellMLVariable* sourceVariable)
+    ObjRef<iface::cellml_api::CellMLVariable>
+    defineCompactedSourceVariable(iface::cellml_api::CellMLComponent* compactedModel,
+                                  iface::cellml_api::CellMLVariable* sourceVariable)
     {
+
         if (mSourceVariables.count(sourceVariable)) return mSourceVariables[sourceVariable];
         ObjRef<iface::cellml_api::CellMLVariable> variable =
                 mCellml.createVariableWithMatchingUnits(compactedModel, sourceVariable);
         variable->publicInterface(iface::cellml_api::INTERFACE_OUT);
-        mSourceVariables[sourceVariable] = variable;
+        if (mCellml.compactVariable(variable, sourceVariable, mSourceVariables) != 0)
+        {
+            std::wcerr << L"ERROR compacting source variable: " << sourceVariable->componentName() << L" / "
+                       << sourceVariable->name() << std::endl;
+            return NULL;
+        }
         return variable;
     }
 
