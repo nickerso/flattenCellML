@@ -1,7 +1,9 @@
 #ifndef CELLMLUTILS_HPP
 #define CELLMLUTILS_HPP
 
-#include "cellml-api-cxx-support.hpp"
+#include <map>
+
+#include <cellml-api-cxx-support.hpp>
 #include <IfaceCellML_APISPEC.hxx>
 #include <IfaceCUSES.hxx>
 
@@ -97,6 +99,21 @@ public:
      * @return zero on success.
      */
     int connectVariables(iface::cellml_api::CellMLVariable* v1, iface::cellml_api::CellMLVariable* v2);
+    
+    /**
+     * Compact the given source variable as the specified variable. Will work out how the source variable is
+     * defined and ensure all required variables are also defined in the variable's component, along with any
+     * required math.
+     * @param variable The copy of the source variable in the compacted model component.
+     * @param sourceVariable The actual source variable from the original model.
+     * @param compactedVariables The list of variables in the compacted model component to actual source
+     * variables in the original model.
+     * @return zero on success.
+     */
+    int compactVariable(iface::cellml_api::CellMLVariable* variable,
+                        iface::cellml_api::CellMLVariable* sourceVariable,
+                        std::map<ObjRef<iface::cellml_api::CellMLVariable>,
+                                 ObjRef<iface::cellml_api::CellMLVariable> > compactedVariables);
 
 private:
     ObjRef<iface::cellml_api::CellMLBootstrap> mBootstrap;

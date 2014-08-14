@@ -142,6 +142,35 @@ defineMapVariables(iface::cellml_api::Model* model, iface::cellml_api::Connectio
     }
 }
 
+static int getInitialValue(iface::cellml_api::CellMLVariable* variable, double* value, int level)
+{
+    int returnCode = 0;
+    if (variable->initialValue() != L"")
+    {
+        // an initial value is present
+        if (variable->initialValueFromVariable())
+        {
+            ObjRef<iface::cellml_api::CellMLVariable> ivSource =
+                    variable->initialValueVariable()->sourceVariable();
+            return getInitialValue(ivSource, value, ++level);
+        }
+        else
+        {
+            // numerical initial_value
+            *value = variable->initialValueValue();
+            return 1;
+        }
+    }
+    else if (level > 0)
+    {
+        // we have a variable used as the initial_value on another variable, but it does not have an
+        // initial_value attribute - so it is probably defined in an equation. This situation is not
+        // currently handled.
+        return -1;
+    }
+    return returnCode;
+}
+
 CellmlUtils::CellmlUtils()
 {
     mBootstrap = CreateCellMLBootstrap();
@@ -303,4 +332,26 @@ int CellmlUtils::connectVariables(iface::cellml_api::CellMLVariable *v1, iface::
         return -1;
     }
     return returnCode;
+}
+
+int CellmlUtils::compactVariable(iface::cellml_api::CellMLVariable *variable,
+                                 iface::cellml_api::CellMLVariable *sourceVariable,
+                                 std::map<ObjRef<iface::cellml_api::CellMLVariable>,
+                                          ObjRef<iface::cellml_api::CellMLVariable> > compactedVariables)
+{
+    int returnCode = 0;
+    // handle the initial value attribute
+    double iv;
+    returnCode = getInitialValue(sourceVariable, &iv, 0);
+    if (returnCode == 1) variable->initialValueValue(iv);
+    else if (returnCode != 0)
+    {
+        std::wcerr << L"Unable to handle the case of initial value's which are not resolvable "
+                      L"to a specified value "
+                   << sourceVariable->componentName() << L" / " << sourceVariable->name() << std::endl;
+        return -1;
+    }
+    // successfully compacted, so add it to the list of compacted source variables.
+    compactedVariables[sourceVariable] = variable;
+    return 0;
 }
