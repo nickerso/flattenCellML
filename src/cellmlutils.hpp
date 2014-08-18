@@ -112,14 +112,52 @@ public:
      */
     int compactVariable(iface::cellml_api::CellMLVariable* variable,
                         iface::cellml_api::CellMLVariable* sourceVariable,
-                        std::map<ObjRef<iface::cellml_api::CellMLVariable>,
-                                 ObjRef<iface::cellml_api::CellMLVariable> > compactedVariables);
+                        std::map<ObjRef<iface::cellml_api::CellMLVariable>, ObjRef<iface::cellml_api::CellMLVariable> >& compactedVariables);
 
 private:
     ObjRef<iface::cellml_api::CellMLBootstrap> mBootstrap;
     ObjRef<iface::cellml_api::Model> mSourceModel;
     ObjRef<iface::cellml_services::CUSESBootstrap> mCusesBootstrap;
     ObjRef<iface::cellml_services::CUSES> mSourceCuses;
+    enum SourceVariableType
+    {
+        UNKNOWN = 0,
+        DIFFERENTIAL = 1,
+        ALGEBRACIC_LHS = 2,
+        CONSTANT_PARAMETER_EQUATION = 3,
+        CONSTANT_PARAMETER = 4,
+        VARIABLE_OF_INTEGRATION = 5,
+        SIMPLE_ASSIGNMENT = 6
+    };
+    static const std::wstring variableTypeToString(SourceVariableType vt)
+    {
+        switch (vt)
+        {
+        case DIFFERENTIAL:
+            return L"Differential Variable";
+        case ALGEBRACIC_LHS:
+            return L"Algebraic LHS Variable";
+        case CONSTANT_PARAMETER_EQUATION:
+            return L"Constant Parameter (equation) Variable";
+        case CONSTANT_PARAMETER:
+            return L"Constant Parameter (initial_value) Variable";
+        case VARIABLE_OF_INTEGRATION:
+            return L"Variable of Integration";
+        case SIMPLE_ASSIGNMENT:
+            return L"Simple Assignment";
+        default:
+            return L"Unknown Variable Type";
+        }
+    }
+
+    /**
+     * Attempt to determine the type of the given source variable.
+     * @param variable The variable of interest.
+     * @param variableType The type of the variable, if it can be determined.
+     * @return If the variable is of a type defined by MathML, a string containing the serialised MathML will be
+     * returned. Otherwise an empty string is returned.
+     */
+    std::wstring determineSourceVariableType(iface::cellml_api::CellMLVariable* variable, SourceVariableType* variableType);
 };
 
 #endif // CELLMLUTILS_HPP

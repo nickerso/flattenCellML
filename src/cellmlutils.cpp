@@ -4,6 +4,7 @@
 #include <iomanip>
 
 #include "cellmlutils.hpp"
+#include "xmlutils.hpp"
 
 #include <CellMLBootstrap.hpp>
 #include <CUSESBootstrap.hpp>
@@ -338,9 +339,19 @@ int CellmlUtils::connectVariables(iface::cellml_api::CellMLVariable *v1, iface::
 int CellmlUtils::compactVariable(iface::cellml_api::CellMLVariable *variable,
                                  iface::cellml_api::CellMLVariable *sourceVariable,
                                  std::map<ObjRef<iface::cellml_api::CellMLVariable>,
-                                          ObjRef<iface::cellml_api::CellMLVariable> > compactedVariables)
+                                          ObjRef<iface::cellml_api::CellMLVariable> >& compactedVariables)
 {
     int returnCode = 0;
+    // add the variable to the compacted variable list so that we don't try to work on in multiple times
+    // need to be sure to remove it if any error occurs.
+    compactedVariables[sourceVariable] = variable;
+
+    // determine what sort of source variable we are dealing with
+    SourceVariableType vt;
+    std::wstring mathml = determineSourceVariableType(sourceVariable, &vt);
+    std::wcout << L"Source variable: " << sourceVariable->componentName() << L" / " << sourceVariable->name()
+               << L"; is of type: " << variableTypeToString(vt) << std::endl;
+
     // handle the initial value attribute
     double iv;
     returnCode = getInitialValue(sourceVariable, &iv, 0);
@@ -350,9 +361,48 @@ int CellmlUtils::compactVariable(iface::cellml_api::CellMLVariable *variable,
         std::wcerr << L"Unable to handle the case of initial value's which are not resolvable "
                       L"to a specified value "
                    << sourceVariable->componentName() << L" / " << sourceVariable->name() << std::endl;
+        // successfully compacted, so add it to the list of compacted source variables.
+        compactedVariables.erase(sourceVariable);
         return -1;
     }
-    // successfully compacted, so add it to the list of compacted source variables.
-    compactedVariables[sourceVariable] = variable;
     return 0;
+}
+
+std::wstring CellmlUtils::determineSourceVariableType(iface::cellml_api::CellMLVariable *variable,
+                                                      CellmlUtils::SourceVariableType* variableType)
+{
+    std::wstring mathString = L"";
+    *variableType = UNKNOWN;
+    ObjRef<iface::cellml_api::CellMLComponent> component = QueryInterface(variable->parentElement());
+    ObjRef<iface::cellml_api::MathList> mathList = component->math();
+    ObjRef<iface::cellml_api::MathMLElementIterator> iter = mathList->iterate();
+    XmlUtils xmlUtils;
+    while (true)
+    {
+        ObjRef<iface::mathml_dom::MathMLElement> mathElement = iter->next();
+        if (mathElement == NULL) break;
+        // make sure its a mathml:math element?
+        ObjRef<iface::mathml_dom::MathMLMathElement> math = QueryInterface(mathElement);
+        if (math)
+        {
+            std::wstring str = mBootstrap->serialiseNode(math);
+            str = L"<?xml version=\"1.0\"?>\n" + str;
+            std::wcout << L"Math block: " << str << std::endl;
+            xmlUtils.parseString(str);
+            mathString = xmlUtils.matchSimpleAssignment(variable->name());
+            if (! mathString.empty())
+            {
+                std::wcout << L"Math is a simple assignment: **" << mathString << L"**" << std::endl;
+                *variableType = SIMPLE_ASSIGNMENT;
+                break;
+            }
+            mathString = xmlUtils.matchAlgebraicLhs(variable->name());
+            if (! mathString.empty())
+            {
+                *variableType = ALGEBRACIC_LHS;
+                break;
+            }
+        }
+    }
+    return mathString;
 }
