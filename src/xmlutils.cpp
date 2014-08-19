@@ -137,7 +137,7 @@ std::wstring XmlUtils::matchSimpleAssignment(const std::wstring &vname)
     xpath += "\\s*\")]/..";
     xpath = "/mathml:math/mathml:apply/mathml:eq/following-sibling::mathml:ci[normalize-space(text()) = \"";
     xpath += wstring2string(vname);
-    xpath += "\"]";
+    xpath += "\"]/following-sibling::mathml:cn/parent::mathml:apply";
     std::cout << "XPath expression: &&" << xpath << "$$" << std::endl;
     xmlDocPtr doc = static_cast<xmlDocPtr>(mCurrentDoc);
     xmlNodeSetPtr results = executeXPath(doc, BAD_CAST xpath.c_str());
@@ -146,10 +146,16 @@ std::wstring XmlUtils::matchSimpleAssignment(const std::wstring &vname)
         if (xmlXPathNodeSetGetLength(results) == 1)
         {
             xmlNodePtr n = xmlXPathNodeSetItem(results, 0);
-            xmlChar* s = xmlNodeGetContent(n);
-            std::string text = std::string((char*)s);
-            eq = string2wstring(text);
-            xmlFree(s);
+            xmlBufferPtr buf = xmlBufferCreate();
+            if (xmlNodeDump(buf, doc, n, 0, 1) > 0)
+            {
+                std::string text = std::string((char*)xmlBufferContent(buf));
+                eq = string2wstring(text);
+            }
+            else
+            {
+                std::cerr << "ERROR: unable to get node contents?" << std::endl;
+            }
         }
         else std::wcout << L"Not 1 result?" << std::endl;
         xmlXPathFreeNodeSet(results);
