@@ -389,11 +389,11 @@ std::wstring CellmlUtils::determineSourceVariableType(iface::cellml_api::CellMLV
             str = L"<?xml version=\"1.0\"?>\n" + str;
             std::wcout << L"Math block: " << str << std::endl;
             xmlUtils.parseString(str);
-            mathString = xmlUtils.matchSimpleAssignment(variable->name());
+            mathString = xmlUtils.matchSimpleNumericalAssignment(variable->name());
             if (! mathString.empty())
             {
                 std::wcout << L"Math is a simple assignment: **" << mathString << L"**" << std::endl;
-                *variableType = SIMPLE_ASSIGNMENT;
+                *variableType = SIMPLE_NUMERICAL_ASSIGNMENT;
                 break;
             }
             mathString = xmlUtils.matchAlgebraicLhs(variable->name());

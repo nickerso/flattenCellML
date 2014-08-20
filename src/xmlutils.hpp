@@ -17,7 +17,7 @@ public:
      * @return The MathML string containing the matching simple assignment equation, if one is found.
      * Otherwise the empty string is returned.
      */
-    std::wstring matchSimpleAssignment(const std::wstring& vname);
+    std::wstring matchSimpleNumericalAssignment(const std::wstring& vname);
 
     /**
      * Checks the current XML document to see if the named variable can be found in a simple LHS assignment

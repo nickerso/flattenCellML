@@ -129,7 +129,7 @@ std::wstring XmlUtils::serialise(int format)
     return xs;
 }
 
-std::wstring XmlUtils::matchSimpleAssignment(const std::wstring &vname)
+std::wstring XmlUtils::matchSimpleNumericalAssignment(const std::wstring &vname)
 {
     std::wstring eq;
     std::string xpath = "/mathml:math/mathml:apply/mathml:eq/../mathml:ci[matches(text(), \"\\s*";
