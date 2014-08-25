@@ -31,7 +31,9 @@ static xmlNodeSetPtr executeXPath(xmlDocPtr doc, const xmlChar* xpathExpr)
         return NULL;
     }
     /* Register namespaces */
-    if (xmlXPathRegisterNs(xpathCtx, BAD_CAST "mathml", BAD_CAST MATHML_NS) != 0)
+    if ((xmlXPathRegisterNs(xpathCtx, BAD_CAST "mathml", BAD_CAST MATHML_NS) != 0) ||
+        (xmlXPathRegisterNs(xpathCtx, BAD_CAST "cellml10", BAD_CAST CELLML_1_0_NS) != 0) ||
+        (xmlXPathRegisterNs(xpathCtx, BAD_CAST "cellml11", BAD_CAST CELLML_1_1_NS) != 0))
     {
         std::cerr << "ERROR registering namespaces?" << std::endl;
         return NULL;
@@ -47,7 +49,7 @@ static xmlNodeSetPtr executeXPath(xmlDocPtr doc, const xmlChar* xpathExpr)
         xmlXPathFreeContext(xpathCtx);
         return NULL;
     }
-    std::cout << "xpath object type = " << xpathObj->type << std::endl;
+    //std::cout << "xpath object type = " << xpathObj->type << std::endl;
     if (xmlXPathNodeSetGetLength(xpathObj->nodesetval) > 0)
     {
         int i;
@@ -62,6 +64,26 @@ static xmlNodeSetPtr executeXPath(xmlDocPtr doc, const xmlChar* xpathExpr)
     return results;
 }
 
+static std::wstring nodeToString(xmlNodePtr node)
+{
+    std::wstring nodeString;
+    // Need to make sure we have the namespace declarations included in the string - this seems
+    // to work?!
+    xmlDocPtr newDoc = xmlNewDoc(BAD_CAST "1.0");
+    xmlNodePtr newNode = xmlDocCopyNode(node, newDoc, 1);
+    xmlBufferPtr buf = xmlBufferCreate();
+    if (xmlNodeDump(buf, newDoc, newNode, 0, 1) > 0)
+    {
+        std::string text = std::string((char*)xmlBufferContent(buf));
+        nodeString = string2wstring(text);
+        //std::wcout << L"Found text: " << eq << std::endl;
+    }
+    else
+    {
+        std::cerr << "ERROR: unable to get node contents?" << std::endl;
+    }
+    return nodeString;
+}
 
 class LibXMLWrapper
 {
@@ -132,13 +154,10 @@ std::wstring XmlUtils::serialise(int format)
 std::wstring XmlUtils::matchSimpleNumericalAssignment(const std::wstring &vname)
 {
     std::wstring eq;
-    std::string xpath = "/mathml:math/mathml:apply/mathml:eq/../mathml:ci[matches(text(), \"\\s*";
-    xpath += wstring2string(vname);
-    xpath += "\\s*\")]/..";
-    xpath = "/mathml:math/mathml:apply/mathml:eq/following-sibling::mathml:ci[normalize-space(text()) = \"";
+    std::string xpath = "/mathml:math/mathml:apply/mathml:eq/following-sibling::mathml:ci[normalize-space(text()) = \"";
     xpath += wstring2string(vname);
     xpath += "\"]/following-sibling::mathml:cn/parent::mathml:apply";
-    std::cout << "XPath expression: &&" << xpath << "$$" << std::endl;
+    //std::cout << "XPath expression: &&" << xpath << "$$" << std::endl;
     xmlDocPtr doc = static_cast<xmlDocPtr>(mCurrentDoc);
     xmlNodeSetPtr results = executeXPath(doc, BAD_CAST xpath.c_str());
     if (results)
@@ -146,16 +165,7 @@ std::wstring XmlUtils::matchSimpleNumericalAssignment(const std::wstring &vname)
         if (xmlXPathNodeSetGetLength(results) == 1)
         {
             xmlNodePtr n = xmlXPathNodeSetItem(results, 0);
-            xmlBufferPtr buf = xmlBufferCreate();
-            if (xmlNodeDump(buf, doc, n, 0, 1) > 0)
-            {
-                std::string text = std::string((char*)xmlBufferContent(buf));
-                eq = string2wstring(text);
-            }
-            else
-            {
-                std::cerr << "ERROR: unable to get node contents?" << std::endl;
-            }
+            eq = nodeToString(n);
         }
         else std::wcout << L"Not 1 result?" << std::endl;
         xmlXPathFreeNodeSet(results);
@@ -168,4 +178,66 @@ std::wstring XmlUtils::matchAlgebraicLhs(const std::wstring &vname)
 {
     std::wstring eq;
     return eq;
+}
+
+int XmlUtils::numericalAssignmentGetValue(double *value, std::wstring &unitsName)
+{
+    int returnCode = 0;
+    std::string xpath = "/mathml:apply/mathml:cn";
+    std::cout << "XPath expression: &&" << xpath << "$$" << std::endl;
+    returnCode = getDoubleContent(xpath.c_str(), value);
+    if (returnCode != 0) return -2;
+    std::cout << "got a double value: " << *value << std::endl;
+    xpath = "/mathml:apply/mathml:cn/@cellml11:units";
+    unitsName = string2wstring(getTextContent(xpath.c_str()));
+    if (unitsName.empty())
+    {
+        xpath = "/mathml:apply/mathml:cn/@cellml10:units";
+        unitsName = string2wstring(getTextContent(xpath.c_str()));
+        if (unitsName.empty())
+        {
+            std::cerr << "Unable to find a units attribute?" << std::endl;
+            return -1;
+        }
+    }
+    std::wcout << L"Found units: " << unitsName << std::endl;
+    return returnCode;
+}
+
+std::string XmlUtils::getTextContent(const char* xpathExpr)
+{
+    std::string text;
+    xmlDocPtr doc = static_cast<xmlDocPtr>(mCurrentDoc);
+    xmlNodeSetPtr results = executeXPath(doc, BAD_CAST xpathExpr);
+    if (results)
+    {
+        if (xmlXPathNodeSetGetLength(results) == 1)
+        {
+            xmlNodePtr n = xmlXPathNodeSetItem(results, 0);
+            xmlChar* s = xmlNodeGetContent(n);
+            text = std::string((char*)s);
+            xmlFree(s);
+        }
+        xmlXPathFreeNodeSet(results);
+    }
+    else
+    {
+        std::cerr << "ERROR: no results found for the XPath expression: " << xpathExpr
+                  << "; with the document: " << std::endl;
+        xmlDocDump(stderr, doc);
+    }
+    return text;
+}
+
+int XmlUtils::getDoubleContent(const char* xpathExpr, double* value)
+{
+    int returnCode = -1;
+    std::string textContent = getTextContent(xpathExpr);
+    if (! textContent.empty())
+    {
+        if (sscanf(textContent.c_str(), "%lf", value) == 1) returnCode = 0;
+        else std::cerr << "getDoubleContent: found a value for xpath expression, but its not a number: \""
+                       << textContent << "\"" << std::endl;
+    }
+    return returnCode;
 }

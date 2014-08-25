@@ -160,7 +160,19 @@ private:
      * @return If the variable is of a type defined by MathML, a string containing the serialised MathML will be
      * returned. Otherwise an empty string is returned.
      */
-    std::wstring determineSourceVariableType(iface::cellml_api::CellMLVariable* variable, SourceVariableType* variableType);
+    std::wstring determineSourceVariableType(iface::cellml_api::CellMLVariable* variable, SourceVariableType& variableType);
+
+    /**
+     * Attempt to get the initial_value for the given variable. Will trace back through the model if the initial_value
+     * is set to be defined by a variable. Will also attempt to get the numerical value if the initial_value of the given
+     * variable is set to a variable which has a simple numerical assignment.
+     * @param variable The variable to get an initial_value from.
+     * @param value The numerical value of the initial value.
+     * @param level Used in the case where we recurse through the model.
+     * @return zero on success, non-zero if we are unable to determine the initial_value (e.g., if the linked variable
+     * is defined by an algebraic expression).
+     */
+    int getInitialValue(iface::cellml_api::CellMLVariable* variable, double* value, int level);
 };
 
 #endif // CELLMLUTILS_HPP

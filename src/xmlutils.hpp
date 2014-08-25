@@ -28,8 +28,20 @@ public:
      */
     std::wstring matchAlgebraicLhs(const std::wstring& vname);
 
+    /**
+     * The current document is expected to be a simple MathML numerical assignment, and this function will return
+     * the numerical value being assigned and the units specified in the math.
+     * @param value The numerical value being assigned.
+     * @param unitsName The name of the units specified on the numerical value (an error if no units present).
+     * @return zero on success, non-zero on error. A return value of -1 indicates missing units.
+     */
+    int numericalAssignmentGetValue(double* value, std::wstring& unitsName);
+
 private:
     void* mCurrentDoc;
+
+    std::string getTextContent(const char* xpathExpr);
+    int getDoubleContent(const char* xpathExpr, double* value);
 };
 
 #endif // XMLUTILS_HPP

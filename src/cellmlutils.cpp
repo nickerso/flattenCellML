@@ -143,7 +143,7 @@ defineMapVariables(iface::cellml_api::Model* model, iface::cellml_api::Connectio
     }
 }
 
-static int getInitialValue(iface::cellml_api::CellMLVariable* variable, double* value, int level)
+int CellmlUtils::getInitialValue(iface::cellml_api::CellMLVariable* variable, double* value, int level)
 {
     int returnCode = 0;
     if (variable->initialValue() != L"")
@@ -157,7 +157,7 @@ static int getInitialValue(iface::cellml_api::CellMLVariable* variable, double* 
         }
         else
         {
-            // @todo need to ensure unit conversion happens.
+            // @todo: need to ensure unit conversion happens.
             // numerical initial_value
             *value = variable->initialValueValue();
             return 1;
@@ -166,9 +166,30 @@ static int getInitialValue(iface::cellml_api::CellMLVariable* variable, double* 
     else if (level > 0)
     {
         // we have a variable used as the initial_value on another variable, but it does not have an
-        // initial_value attribute - so it is probably defined in an equation. This situation is not
-        // currently handled.
-        return -1;
+        // initial_value attribute - so it is probably defined in an equation. Check for the easy case
+        // we can handle
+        SourceVariableType vt;
+        std::wstring mathml = determineSourceVariableType(variable, vt);
+        if (vt == SIMPLE_NUMERICAL_ASSIGNMENT)
+        {
+            std::wcout << L"Found a simple numerical assignment for " << variable->componentName() << L"/"
+                       << variable->name() << std::endl;
+            XmlUtils xutils;
+            xutils.parseString(mathml);
+            std::wstring unitsName;
+            returnCode = xutils.numericalAssignmentGetValue(value, unitsName);
+            // @todo: need to match units.
+            std::wcout << L"Getting value for: " << variable->componentName() << L"/"
+                       << variable->name() << std::endl;
+            std::wcout << L"units = \"" << unitsName << L"\"" << std::endl;
+        }
+        else
+        {
+            std::wcerr << L"ERROR: initial value set by variable (" << variable->componentName() << L"/"
+                       << variable->name() << L"which isn't defined in a way we can use for a initial_value."
+                       << std::endl;
+            return -1;
+        }
     }
     return returnCode;
 }
@@ -348,7 +369,11 @@ int CellmlUtils::compactVariable(iface::cellml_api::CellMLVariable *variable,
 
     // determine what sort of source variable we are dealing with
     SourceVariableType vt;
-    std::wstring mathml = determineSourceVariableType(sourceVariable, &vt);
+    std::wstring mathml = determineSourceVariableType(sourceVariable, vt);
+    if (mathml.empty())
+    {
+
+    }
     std::wcout << L"Source variable: " << sourceVariable->componentName() << L" / " << sourceVariable->name()
                << L"; is of type: " << variableTypeToString(vt) << std::endl;
 
@@ -369,10 +394,10 @@ int CellmlUtils::compactVariable(iface::cellml_api::CellMLVariable *variable,
 }
 
 std::wstring CellmlUtils::determineSourceVariableType(iface::cellml_api::CellMLVariable *variable,
-                                                      CellmlUtils::SourceVariableType* variableType)
+                                                      CellmlUtils::SourceVariableType& variableType)
 {
     std::wstring mathString = L"";
-    *variableType = UNKNOWN;
+    variableType = UNKNOWN;
     ObjRef<iface::cellml_api::CellMLComponent> component = QueryInterface(variable->parentElement());
     ObjRef<iface::cellml_api::MathList> mathList = component->math();
     ObjRef<iface::cellml_api::MathMLElementIterator> iter = mathList->iterate();
@@ -386,20 +411,20 @@ std::wstring CellmlUtils::determineSourceVariableType(iface::cellml_api::CellMLV
         if (math)
         {
             std::wstring str = mBootstrap->serialiseNode(math);
-            str = L"<?xml version=\"1.0\"?>\n" + str;
-            std::wcout << L"Math block: " << str << std::endl;
+            // str = L"<?xml version=\"1.0\"?>\n" + str;
+            // std::wcout << L"Math block: " << str << std::endl;
             xmlUtils.parseString(str);
             mathString = xmlUtils.matchSimpleNumericalAssignment(variable->name());
             if (! mathString.empty())
             {
                 std::wcout << L"Math is a simple assignment: **" << mathString << L"**" << std::endl;
-                *variableType = SIMPLE_NUMERICAL_ASSIGNMENT;
+                variableType = SIMPLE_NUMERICAL_ASSIGNMENT;
                 break;
             }
             mathString = xmlUtils.matchAlgebraicLhs(variable->name());
             if (! mathString.empty())
             {
-                *variableType = ALGEBRACIC_LHS;
+                variableType = ALGEBRACIC_LHS;
                 break;
             }
         }
