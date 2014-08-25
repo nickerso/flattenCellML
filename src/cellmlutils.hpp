@@ -169,7 +169,8 @@ private:
      * @param variable The variable to get an initial_value from.
      * @param value The numerical value of the initial value.
      * @param level Used in the case where we recurse through the model.
-     * @return zero on success, non-zero if we are unable to determine the initial_value (e.g., if the linked variable
+     * @return 1 if an initial value was successfully found and value was set; zero on other success (i.e., no initial value attribute
+     * found); other non-zero values if we are unable to determine the initial_value (e.g., if the linked variable
      * is defined by an algebraic expression).
      */
     int getInitialValue(iface::cellml_api::CellMLVariable* variable, double* value, int level);

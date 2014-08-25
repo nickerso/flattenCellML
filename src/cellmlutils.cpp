@@ -182,6 +182,7 @@ int CellmlUtils::getInitialValue(iface::cellml_api::CellMLVariable* variable, do
             std::wcout << L"Getting value for: " << variable->componentName() << L"/"
                        << variable->name() << std::endl;
             std::wcout << L"units = \"" << unitsName << L"\"" << std::endl;
+            return 1;
         }
         else
         {
