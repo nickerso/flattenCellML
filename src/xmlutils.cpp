@@ -57,7 +57,7 @@ static xmlNodeSetPtr executeXPath(xmlDocPtr doc, const xmlChar* xpathExpr)
         for (i=0; i< xmlXPathNodeSetGetLength(xpathObj->nodesetval); ++i)
             xmlXPathNodeSetAdd(results, xmlXPathNodeSetItem(xpathObj->nodesetval, i));
     }
-    else std::wcout << L"No nodesetval?" << std::endl;
+    //else std::wcout << L"No nodesetval?" << std::endl;
     /* Cleanup */
     xmlXPathFreeObject(xpathObj);
     xmlXPathFreeContext(xpathCtx);
@@ -167,10 +167,33 @@ std::wstring XmlUtils::matchConstantParameterEquation(const std::wstring &vname)
             xmlNodePtr n = xmlXPathNodeSetItem(results, 0);
             eq = nodeToString(n);
         }
-        else std::wcout << L"Not 1 result?" << std::endl;
+        //else std::wcout << L"Not 1 result?" << std::endl;
         xmlXPathFreeNodeSet(results);
     }
-    else std::wcout << L"No results" << std::endl;
+    //else std::wcout << L"No results" << std::endl;
+    return eq;
+}
+
+std::wstring XmlUtils::matchSimpleEquality(const std::wstring &vname)
+{
+    std::wstring eq;
+    std::string xpath = "/mathml:math/mathml:apply/mathml:eq/following-sibling::mathml:ci[normalize-space(text()) = \"";
+    xpath += wstring2string(vname);
+    xpath += "\"]/following-sibling::mathml:ci/parent::mathml:apply";
+    //std::cout << "XPath expression: &&" << xpath << "$$" << std::endl;
+    xmlDocPtr doc = static_cast<xmlDocPtr>(mCurrentDoc);
+    xmlNodeSetPtr results = executeXPath(doc, BAD_CAST xpath.c_str());
+    if (results)
+    {
+        if (xmlXPathNodeSetGetLength(results) == 1)
+        {
+            xmlNodePtr n = xmlXPathNodeSetItem(results, 0);
+            eq = nodeToString(n);
+        }
+        //else std::wcout << L"Not 1 result?" << std::endl;
+        xmlXPathFreeNodeSet(results);
+    }
+    //else std::wcout << L"No results" << std::endl;
     return eq;
 }
 

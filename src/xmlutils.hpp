@@ -20,6 +20,15 @@ public:
     std::wstring matchConstantParameterEquation(const std::wstring& vname);
 
     /**
+     * Checks the current XML document to see if a simple variable equality equation can be found for the
+     * given variable name. e.g., vname = otherVariable
+     * @param vname The variable name to search for.
+     * @return The MathML string containing the matching simple equality equation, if one is found. Otherwise
+     * the empty string will be returned.
+     */
+    std::wstring matchSimpleEquality(const std::wstring& vname);
+
+    /**
      * Checks the current XML document to see if the named variable can be found in a simple LHS assignment
      * of an algebraic expression. e.g., vname = a * x + b
      * @param vname The name of the variable to search for.

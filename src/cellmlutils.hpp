@@ -145,7 +145,7 @@ private:
         CONSTANT_PARAMETER_EQUATION = 3,
         CONSTANT_PARAMETER = 4,
         VARIABLE_OF_INTEGRATION = 5,
-        SIMPLE_ASSIGNMENT = 6
+        SIMPLE_EQUALITY = 6
     };
     static const std::wstring variableTypeToString(SourceVariableType vt)
     {
@@ -161,8 +161,8 @@ private:
             return L"Constant Parameter (initial_value) Variable";
         case VARIABLE_OF_INTEGRATION:
             return L"Variable of Integration";
-        case SIMPLE_ASSIGNMENT:
-            return L"Simple Assignment";
+        case SIMPLE_EQUALITY:
+            return L"Simple Equality";
         default:
             return L"Unknown Variable Type";
         }

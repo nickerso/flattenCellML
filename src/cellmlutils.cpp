@@ -402,7 +402,7 @@ int CellmlUtils::compactVariable(iface::cellml_api::CellMLVariable *variable,
         } break;
         case CONSTANT_PARAMETER:
         case VARIABLE_OF_INTEGRATION:
-        case SIMPLE_ASSIGNMENT:
+        case SIMPLE_EQUALITY:
         default:
             break;
         }
@@ -457,8 +457,15 @@ std::wstring CellmlUtils::determineSourceVariableType(iface::cellml_api::CellMLV
             mathString = xmlUtils.matchConstantParameterEquation(variable->name());
             if (! mathString.empty())
             {
-                std::wcout << L"Math is a constant parameter equation: **" << mathString << L"**" << std::endl;
+                //std::wcout << L"Math is a constant parameter equation: **" << mathString << L"**" << std::endl;
                 variableType = CONSTANT_PARAMETER_EQUATION;
+                break;
+            }
+            mathString = xmlUtils.matchSimpleEquality(variable->name());
+            if (! mathString.empty())
+            {
+                std::wcout << L"Math is a simple equality: **" << mathString << L"**" << std::endl;
+                variableType = SIMPLE_EQUALITY;
                 break;
             }
             mathString = xmlUtils.matchAlgebraicLhs(variable->name());
