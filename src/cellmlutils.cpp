@@ -397,7 +397,7 @@ int CellmlUtils::compactVariable(iface::cellml_api::CellMLVariable *variable,
             double value;
             returnCode = xutils.numericalAssignmentGetValue(&value, unitsName);
             ObjRef<iface::cellml_api::CellMLComponent> component(QueryInterface(variable->parentElement()));
-            defineConstantParameterEquation(component, variable->name(), value,
+            returnCode = defineConstantParameterEquation(component, variable->name(), value,
                                             unitsName);
         } break;
         case CONSTANT_PARAMETER:
@@ -406,6 +406,15 @@ int CellmlUtils::compactVariable(iface::cellml_api::CellMLVariable *variable,
         default:
             break;
         }
+    }
+
+    if (returnCode != 0)
+    {
+        std::wcerr << L"ERROR: CellmlUtils::compactVariable: Something went wrong compacting the source variable: "
+                   << sourceVariable->componentName() << L" / " << sourceVariable->name() << std::endl;
+        // unsuccessfully compacted, so remove it to the list of compacted source variables.
+        compactedVariables.erase(sourceVariable);
+        return returnCode;
     }
 
     // handle the initial value attribute
@@ -417,7 +426,7 @@ int CellmlUtils::compactVariable(iface::cellml_api::CellMLVariable *variable,
         std::wcerr << L"Unable to handle the case of initial value's which are not resolvable "
                       L"to a specified value "
                    << sourceVariable->componentName() << L" / " << sourceVariable->name() << std::endl;
-        // successfully compacted, so add it to the list of compacted source variables.
+        // unsuccessfully compacted, so remove it to the list of compacted source variables.
         compactedVariables.erase(sourceVariable);
         return -1;
     }
