@@ -5,9 +5,13 @@
 
 #include "cellmlutils.hpp"
 #include "xmlutils.hpp"
+#include "utils.hpp"
 
 #include <CellMLBootstrap.hpp>
 #include <CUSESBootstrap.hpp>
+#include <AnnoToolsBootstrap.hpp>
+
+#define MATH_ANNOTATION_KEY L"mathml::math"
 
 /**
  * Return a modified version of the base name which should be unique.
@@ -157,7 +161,7 @@ int CellmlUtils::getInitialValue(iface::cellml_api::CellMLVariable* variable, do
         }
         else
         {
-            // @todo: need to ensure unit conversion happens.
+            /// @todo Need to ensure unit conversion happens.
             // numerical initial_value
             *value = variable->initialValueValue();
             return 1;
@@ -170,15 +174,15 @@ int CellmlUtils::getInitialValue(iface::cellml_api::CellMLVariable* variable, do
         // we can handle
         SourceVariableType vt;
         std::wstring mathml = determineSourceVariableType(variable, vt);
-        if (vt == SIMPLE_NUMERICAL_ASSIGNMENT)
+        if (vt == CONSTANT_PARAMETER_EQUATION)
         {
-            std::wcout << L"Found a simple numerical assignment for " << variable->componentName() << L"/"
-                       << variable->name() << std::endl;
+            std::wcout << L"getInitialValue: Found a constant parameter equation for "
+                       << variable->componentName() << L"/" << variable->name() << std::endl;
             XmlUtils xutils;
             xutils.parseString(mathml);
             std::wstring unitsName;
             returnCode = xutils.numericalAssignmentGetValue(value, unitsName);
-            // @todo: need to match units.
+            /// @todo Need to match units.
             std::wcout << L"Getting value for: " << variable->componentName() << L"/"
                        << variable->name() << std::endl;
             std::wcout << L"units = \"" << unitsName << L"\"" << std::endl;
@@ -199,6 +203,9 @@ CellmlUtils::CellmlUtils()
 {
     mBootstrap = CreateCellMLBootstrap();
     mCusesBootstrap = CreateCUSESBootstrap();
+    ObjRef<iface::cellml_services::AnnotationToolService> ats =  CreateAnnotationToolService();
+    // create one annotation set to use for our annotations.
+    mAnnotations = ats->createAnnotationSet();
 }
 
 CellmlUtils::~CellmlUtils()
@@ -339,7 +346,8 @@ int CellmlUtils::connectVariables(iface::cellml_api::CellMLVariable *v1, iface::
     {
         int order = 0;
         ObjRef<iface::cellml_api::Connection> connection = findConnection(v1->modelElement()->connections(),
-                                                                          v1->componentName(), v2->componentName(), &order);
+                                                                          v1->componentName(),
+                                                                          v2->componentName(), &order);
         if (connection == NULL)
         {
             connection = createConnection(v1->modelElement(), v1->componentName(), v2->componentName());
@@ -371,12 +379,34 @@ int CellmlUtils::compactVariable(iface::cellml_api::CellMLVariable *variable,
     // determine what sort of source variable we are dealing with
     SourceVariableType vt;
     std::wstring mathml = determineSourceVariableType(sourceVariable, vt);
-    if (mathml.empty())
+    if (! mathml.empty())
     {
-
+        std::wcout << L"Source variable: " << sourceVariable->componentName() << L" / " << sourceVariable->name()
+                   << L"; is of type: " << variableTypeToString(vt) << std::endl;
+        switch (vt)
+        {
+        case DIFFERENTIAL:
+        case ALGEBRACIC_LHS:
+            break;
+        case CONSTANT_PARAMETER_EQUATION:
+        {
+            XmlUtils xutils;
+            xutils.parseString(mathml);
+            /// @todo Need to make sure units are defined?
+            std::wstring unitsName;
+            double value;
+            returnCode = xutils.numericalAssignmentGetValue(&value, unitsName);
+            ObjRef<iface::cellml_api::CellMLComponent> component(QueryInterface(variable->parentElement()));
+            defineConstantParameterEquation(component, variable->name(), value,
+                                            unitsName);
+        } break;
+        case CONSTANT_PARAMETER:
+        case VARIABLE_OF_INTEGRATION:
+        case SIMPLE_ASSIGNMENT:
+        default:
+            break;
+        }
     }
-    std::wcout << L"Source variable: " << sourceVariable->componentName() << L" / " << sourceVariable->name()
-               << L"; is of type: " << variableTypeToString(vt) << std::endl;
 
     // handle the initial value attribute
     double iv;
@@ -415,11 +445,11 @@ std::wstring CellmlUtils::determineSourceVariableType(iface::cellml_api::CellMLV
             // str = L"<?xml version=\"1.0\"?>\n" + str;
             // std::wcout << L"Math block: " << str << std::endl;
             xmlUtils.parseString(str);
-            mathString = xmlUtils.matchSimpleNumericalAssignment(variable->name());
+            mathString = xmlUtils.matchConstantParameterEquation(variable->name());
             if (! mathString.empty())
             {
-                std::wcout << L"Math is a simple assignment: **" << mathString << L"**" << std::endl;
-                variableType = SIMPLE_NUMERICAL_ASSIGNMENT;
+                std::wcout << L"Math is a constant parameter equation: **" << mathString << L"**" << std::endl;
+                variableType = CONSTANT_PARAMETER_EQUATION;
                 break;
             }
             mathString = xmlUtils.matchAlgebraicLhs(variable->name());
@@ -431,4 +461,76 @@ std::wstring CellmlUtils::determineSourceVariableType(iface::cellml_api::CellMLV
         }
     }
     return mathString;
+}
+
+int CellmlUtils::defineConstantParameterEquation(iface::cellml_api::CellMLComponent* component,
+                                                 const std::wstring& vname, double value,
+                                                 const std::wstring& unitsName)
+{
+    int returnCode = 0;
+    std::wstring mathml = L"<apply><eq/><ci>";
+    mathml += vname;
+    mathml += L"</ci><cn cellml:units=\"";
+    mathml += unitsName;
+    mathml += L"\">";
+    mathml += formatNumber(value);
+    mathml += L"</cn></apply>";
+    // make sure we add in any existing annotations...
+    mathml += mAnnotations->getStringAnnotation(component, MATH_ANNOTATION_KEY);
+    mAnnotations->setStringAnnotation(component, MATH_ANNOTATION_KEY, mathml);
+    return returnCode;
+}
+
+std::wstring CellmlUtils::modelToString(iface::cellml_api::Model *model)
+{
+    std::wstring modelString = model->serialisedText();
+    // dirty hack to get the math into the model since its too hard to do this directly in the CellML API.
+    ObjRef<iface::cellml_api::CellMLComponentSet> components = model->localComponents();
+    ObjRef<iface::cellml_api::CellMLComponentIterator> iter = components->iterateComponents();
+    while (true)
+    {
+        ObjRef<iface::cellml_api::CellMLComponent> component = iter->nextComponent();
+        if (component == NULL) break;
+        std::wstring cname = component->name();
+        std::wstring mathBlock = mAnnotations->getStringAnnotation(component, MATH_ANNOTATION_KEY);
+        if (mathBlock.length() > 1)
+        {
+            mathBlock = L"<math xmlns=\"http://www.w3.org/1998/Math/MathML\">" + mathBlock;
+            mathBlock += L"</math>";
+            //std::wcout << L"Adding math block to component: " << mathBlock << std::endl;
+            std::wstring nameAttr = L"name=\"" + cname + L"\"";
+            size_t componentNameLocation = modelString.find(nameAttr);
+            size_t componentEndLocation = modelString.find(L"</component>", componentNameLocation);
+            modelString.insert(componentEndLocation, mathBlock);
+        }
+    }
+    // seems we need to make sure the cellml namespace prefix is defined
+    if (modelString.find(L"xmlns:cellml") == modelString.npos)
+    {
+        std::size_t pos1 = modelString.find(L"xmlns=\"");
+        pos1 += 7;
+        std::size_t pos2 = modelString.find(L'"', pos1);
+        std::wstring nsUri = modelString.substr(pos1, (pos2-pos1));
+        modelString.insert(++pos2, L" xmlns:cellml=\"");
+        pos2 += 15;
+        modelString.insert(pos2, nsUri);
+        pos2 += nsUri.length();
+        modelString.insert(pos2, L"\"");
+    }
+    return modelString;
+}
+
+ObjRef<iface::cellml_api::Model> CellmlUtils::createModelFromString(const std::wstring &modelString)
+{
+    ObjRef<iface::cellml_api::Model> newModel = NULL;
+    ObjRef<iface::cellml_api::DOMModelLoader> modelLoader = mBootstrap->modelLoader();
+    try
+    {
+        newModel = modelLoader->createFromText(modelString);
+    }
+    catch (...)
+    {
+        std::wcerr << L"ERROR creating model from the string: " << modelString << std::endl;
+    }
+    return newModel;
 }

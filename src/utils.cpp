@@ -23,3 +23,27 @@ std::wstring string2wstring(const std::string& str)
     }
     return(std::wstring(L""));
 }
+
+std::wstring
+formatNumber(const int value)
+{
+  wchar_t valueString[100];
+  swprintf(valueString,100,L"%d",value);
+  return std::wstring(valueString);
+}
+
+std::wstring
+formatNumber(const uint32_t value)
+{
+  wchar_t valueString[100];
+  swprintf(valueString,100,L"%u",value);
+  return std::wstring(valueString);
+}
+
+std::wstring
+formatNumber(const double value)
+{
+  wchar_t valueString[100];
+  swprintf(valueString,100,L"%lf",value);
+  return std::wstring(valueString);
+}

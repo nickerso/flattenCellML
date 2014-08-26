@@ -6,6 +6,7 @@
 #include <cellml-api-cxx-support.hpp>
 #include <IfaceCellML_APISPEC.hxx>
 #include <IfaceCUSES.hxx>
+#include <IfaceAnnoTools.hxx>
 
 class CellmlUtils
 {
@@ -18,6 +19,13 @@ public:
      * @return The newly created model.
      */
     ObjRef<iface::cellml_api::Model> createModel();
+
+    /**
+     * Create a new model from the given model definition string.
+     * @param modelString A string containing the model definition.
+     * @return The model created from the given string; or NULL on error.
+     */
+    ObjRef<iface::cellml_api::Model> createModelFromString(const std::wstring& modelString);
 
     ObjRef<iface::cellml_api::CellMLComponent>
     createComponent(iface::cellml_api::Model* model, const std::wstring& name,
@@ -112,13 +120,23 @@ public:
      */
     int compactVariable(iface::cellml_api::CellMLVariable* variable,
                         iface::cellml_api::CellMLVariable* sourceVariable,
-                        std::map<ObjRef<iface::cellml_api::CellMLVariable>, ObjRef<iface::cellml_api::CellMLVariable> >& compactedVariables);
+                        std::map<ObjRef<iface::cellml_api::CellMLVariable>,
+                                 ObjRef<iface::cellml_api::CellMLVariable> >& compactedVariables);
+
+    /**
+     * Generate a serialised version of the given model, with any annotations we know about
+     * added in to the model serialisation.
+     * @param model The model to serialise.
+     * @return A string containing the serialised model. Will be an empty string if an error occurs.
+     */
+    std::wstring modelToString(iface::cellml_api::Model* model);
 
 private:
     ObjRef<iface::cellml_api::CellMLBootstrap> mBootstrap;
     ObjRef<iface::cellml_api::Model> mSourceModel;
     ObjRef<iface::cellml_services::CUSESBootstrap> mCusesBootstrap;
     ObjRef<iface::cellml_services::CUSES> mSourceCuses;
+    ObjRef<iface::cellml_services::AnnotationSet> mAnnotations;
     enum SourceVariableType
     {
         UNKNOWN = 0,
@@ -127,8 +145,7 @@ private:
         CONSTANT_PARAMETER_EQUATION = 3,
         CONSTANT_PARAMETER = 4,
         VARIABLE_OF_INTEGRATION = 5,
-        SIMPLE_NUMERICAL_ASSIGNMENT = 6,
-        SIMPLE_ASSIGNMENT = 7
+        SIMPLE_ASSIGNMENT = 6
     };
     static const std::wstring variableTypeToString(SourceVariableType vt)
     {
@@ -144,8 +161,6 @@ private:
             return L"Constant Parameter (initial_value) Variable";
         case VARIABLE_OF_INTEGRATION:
             return L"Variable of Integration";
-        case SIMPLE_NUMERICAL_ASSIGNMENT:
-            return L"Simple Numerical Assignment";
         case SIMPLE_ASSIGNMENT:
             return L"Simple Assignment";
         default:
@@ -160,7 +175,8 @@ private:
      * @return If the variable is of a type defined by MathML, a string containing the serialised MathML will be
      * returned. Otherwise an empty string is returned.
      */
-    std::wstring determineSourceVariableType(iface::cellml_api::CellMLVariable* variable, SourceVariableType& variableType);
+    std::wstring determineSourceVariableType(iface::cellml_api::CellMLVariable* variable,
+                                             SourceVariableType& variableType);
 
     /**
      * Attempt to get the initial_value for the given variable. Will trace back through the model if the initial_value
@@ -174,6 +190,18 @@ private:
      * is defined by an algebraic expression).
      */
     int getInitialValue(iface::cellml_api::CellMLVariable* variable, double* value, int level);
+
+    /**
+     * Define the mathematics annotation for the given constant parameter equation.
+     * @param component The component in which to create the equation.
+     * @param vname The name of the constant parameter variable in the given component.
+     * @param value The value to set in the equation.
+     * @param unitsName The name of the units to give the numerical constant.
+     * @return zero on success.
+     */
+    int defineConstantParameterEquation(iface::cellml_api::CellMLComponent* component,
+                                        const std::wstring& vname, double value,
+                                        const std::wstring& unitsName);
 };
 
 #endif // CELLMLUTILS_HPP

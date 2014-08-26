@@ -128,8 +128,12 @@ public:
                 }
             }
         }
-
-        return mModelOut;
+        // serialise the generated model to a string to catch any special annotations we might
+        // have created.
+        std::wstring modelString = mCellml.modelToString(mModelOut);
+        // and then parse the model back to check its all good
+        ObjRef<iface::cellml_api::Model> newModel = mCellml.createModelFromString(modelString);
+        return newModel;
     }
 };
 

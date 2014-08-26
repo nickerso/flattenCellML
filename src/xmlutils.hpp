@@ -11,13 +11,13 @@ public:
     std::wstring serialise(int format = 1);
 
     /**
-     * Checks the current XML document to see if a simple assignment can be found for the given
+     * Checks the current XML document to see if a constant parameter equation can be found for the given
      * variable name. e.g., vname = 1.23 [ms]
      * @param vname The variable name to search for.
      * @return The MathML string containing the matching simple assignment equation, if one is found.
      * Otherwise the empty string is returned.
      */
-    std::wstring matchSimpleNumericalAssignment(const std::wstring& vname);
+    std::wstring matchConstantParameterEquation(const std::wstring& vname);
 
     /**
      * Checks the current XML document to see if the named variable can be found in a simple LHS assignment
