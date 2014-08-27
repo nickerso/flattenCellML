@@ -41,6 +41,15 @@ public:
     std::wstring matchAlgebraicLhs(const std::wstring& vname);
 
     /**
+     * Checks the current XML document to see if the named variable can be found in a differential equation LHS.
+     * e.g., d(vname)/d(time) = ...
+     * @param vname The name of the variable to search for.
+     * @return The MathML string containing the matching equation, if one is found. Otherwise the empty string
+     * is returned.
+     */
+    std::wstring matchDifferential(const std::wstring& vname);
+
+    /**
      * The current document is expected to be a simple MathML numerical assignment, and this function will return
      * the numerical value being assigned and the units specified in the math.
      * @param value The numerical value being assigned.
@@ -61,6 +70,15 @@ private:
 
     std::string getTextContent(const char* xpathExpr);
     int getDoubleContent(const char* xpathExpr, double* value);
+
+    /**
+     * Look for a single node in the current XML doc which matches the given xpathExpr. If one is found, serialise it
+     * and return the serialisation.
+     * @param xpathExpr The XPath expression to execute on the current document.
+     * @return If executing the XPath expression on the current document results in a single result node, serialise it
+     * to a string and return it. Otherwise, return the empty string.
+     */
+    std::wstring extractSingleNode(const std::string& xpathExpr);
 };
 
 #endif // XMLUTILS_HPP

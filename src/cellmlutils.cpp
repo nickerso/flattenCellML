@@ -387,7 +387,9 @@ int CellmlUtils::compactVariable(iface::cellml_api::CellMLVariable *variable,
         {
         case DIFFERENTIAL:
         case ALGEBRACIC_LHS:
-            break;
+        {
+            std::wcout << L"Found a diff or equation: " << mathml << std::endl;
+        } break;
         case CONSTANT_PARAMETER_EQUATION:
         {
             // simply copy across the equation
@@ -399,7 +401,7 @@ int CellmlUtils::compactVariable(iface::cellml_api::CellMLVariable *variable,
             returnCode = xutils.numericalAssignmentGetValue(&value, unitsName);
             ObjRef<iface::cellml_api::CellMLComponent> component(QueryInterface(variable->parentElement()));
             returnCode = defineConstantParameterEquation(component, variable->name(), value,
-                                            unitsName);
+                                                         unitsName);
         } break;
         case CONSTANT_PARAMETER:
         case VARIABLE_OF_INTEGRATION:
@@ -503,6 +505,12 @@ std::wstring CellmlUtils::determineSourceVariableType(iface::cellml_api::CellMLV
             if (! mathString.empty())
             {
                 variableType = ALGEBRACIC_LHS;
+                break;
+            }
+            mathString = xmlUtils.matchDifferential(variable->name());
+            if (! mathString.empty())
+            {
+                variableType = DIFFERENTIAL;
                 break;
             }
         }
