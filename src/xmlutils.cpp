@@ -264,3 +264,13 @@ int XmlUtils::getDoubleContent(const char* xpathExpr, double* value)
     }
     return returnCode;
 }
+
+std::pair<std::wstring, std::wstring> XmlUtils::simpleEqualityGetVariableNames()
+{
+    std::pair<std::wstring, std::wstring> p;
+    std::string ci = getTextContent("/mathml:apply/mathml:ci[1]");
+    if (! ci.empty()) p.first = string2wstring(ci);
+    ci = getTextContent("/mathml:apply/mathml:ci[2]");
+    if (! ci.empty()) p.second = string2wstring(ci);
+    return p;
+}

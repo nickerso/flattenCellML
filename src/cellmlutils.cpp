@@ -390,6 +390,7 @@ int CellmlUtils::compactVariable(iface::cellml_api::CellMLVariable *variable,
             break;
         case CONSTANT_PARAMETER_EQUATION:
         {
+            // simply copy across the equation
             XmlUtils xutils;
             xutils.parseString(mathml);
             /// @todo Need to make sure units are defined?
@@ -402,7 +403,37 @@ int CellmlUtils::compactVariable(iface::cellml_api::CellMLVariable *variable,
         } break;
         case CONSTANT_PARAMETER:
         case VARIABLE_OF_INTEGRATION:
+            break;
         case SIMPLE_EQUALITY:
+        {
+            // we can replace the current source variable with the equal variable
+            XmlUtils xutils;
+            xutils.parseString(mathml);
+            /// @todo Need to check units?
+            std::pair<std::wstring, std::wstring> vnames = xutils.simpleEqualityGetVariableNames();
+            std::wcout << L"Variable equality: " << vnames.first << L" = " << vnames.second << std::endl;
+            ObjRef<iface::cellml_api::CellMLComponent> component(QueryInterface(sourceVariable->parentElement()));
+            ObjRef<iface::cellml_api::CellMLVariable> equalVariable = component->variables()->getVariable(vnames.second);
+            if (equalVariable)
+            {
+                ObjRef<iface::cellml_api::CellMLVariable> equalSourceVariable =
+                        component->variables()->getVariable(vnames.second)->sourceVariable();
+                if (equalSourceVariable)
+                {
+                    returnCode = compactVariable(variable, equalSourceVariable, compactedVariables);
+                }
+                else
+                {
+                    std::wcerr << L"ERROR: unable to get the source variable for an equal variable" << std::endl;
+                    returnCode = -3;
+                }
+            }
+            else
+            {
+                std::wcerr << L"ERROR: unable to get the equal variable." << std::endl;
+                returnCode = -4;
+            }
+        } break;
         default:
             break;
         }

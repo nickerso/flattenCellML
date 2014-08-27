@@ -1,6 +1,9 @@
 #ifndef XMLUTILS_HPP
 #define XMLUTILS_HPP
 
+#include <utility>
+#include <string>
+
 class XmlUtils
 {
 public:
@@ -45,6 +48,13 @@ public:
      * @return zero on success, non-zero on error. A return value of -1 indicates missing units.
      */
     int numericalAssignmentGetValue(double* value, std::wstring& unitsName);
+
+    /**
+     * The current document is expected to be a simple MathML variable equality, and this function will return the
+     * two variable names.
+     * @return The pair of variable names in the equality relationship.
+     */
+    std::pair<std::wstring, std::wstring> simpleEqualityGetVariableNames();
 
 private:
     void* mCurrentDoc;
