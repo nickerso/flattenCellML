@@ -47,3 +47,31 @@ formatNumber(const double value)
   swprintf(valueString,100,L"%lf",value);
   return std::wstring(valueString);
 }
+
+std::wstring replaceAll(const std::wstring& src, wchar_t original, wchar_t replacement)
+{
+    std::wstring copy = src;
+    std::size_t pos = 0;
+    while (1)
+    {
+        pos = copy.find(original, pos);
+        if (pos == std::wstring::npos) break;
+        copy[pos] = replacement;
+        ++pos;
+    }
+    return copy;
+}
+
+std::wstring removeAll(const std::wstring& src, wchar_t original)
+{
+    std::wstring copy = src;
+    std::size_t pos = 0;
+    while (1)
+    {
+        pos = copy.find(original, pos);
+        if (pos == std::wstring::npos) break;
+        copy.erase(pos, 1);
+    }
+    return copy;
+}
+
