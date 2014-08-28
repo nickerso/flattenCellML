@@ -400,19 +400,23 @@ int CellmlUtils::compactVariable(iface::cellml_api::CellMLVariable* variable,
     {
         std::wcout << L"Source variable: " << sourceVariable->componentName() << L" / " << sourceVariable->name()
                    << L"; is of type: " << variableTypeToString(vt) << std::endl;
+        XmlUtils xutils;
+        xutils.parseString(mathml);
         switch (vt)
         {
         case DIFFERENTIAL:
         case ALGEBRACIC_LHS:
         {
-            //std::wcout << L"Found a diff or equation: " << mathml << std::endl;
-
+            std::wcout << L"Found a diff or equation: " << mathml << std::endl;
+//            std::vector<std::wstring> ciList = xutils.getCiList();
+//            for (const auto& n: ciList)
+//            {
+//                if
+//            }
         } break;
         case CONSTANT_PARAMETER_EQUATION:
         {
             // simply copy across the equation
-            XmlUtils xutils;
-            xutils.parseString(mathml);
             /// @todo Need to make sure units are defined?
             std::wstring unitsName;
             double value;
@@ -427,8 +431,6 @@ int CellmlUtils::compactVariable(iface::cellml_api::CellMLVariable* variable,
         case SIMPLE_EQUALITY:
         {
             // we can replace the current source variable with the equal variable
-            XmlUtils xutils;
-            xutils.parseString(mathml);
             /// @todo Need to check units?
             std::pair<std::wstring, std::wstring> vnames = xutils.simpleEqualityGetVariableNames();
             std::wcout << L"Variable equality: " << vnames.first << L" = " << vnames.second << std::endl;
