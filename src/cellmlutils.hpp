@@ -109,13 +109,28 @@ public:
     int connectVariables(iface::cellml_api::CellMLVariable* v1, iface::cellml_api::CellMLVariable* v2);
     
     /**
+     * Create a variable in the compacted model component which will then be used to represent the compacted version
+     * of the given variable from the source model.
+     * @param compactedModelComponent The component containing the compacted model representation.
+     * @param sourceVariable The variable in the source model which is being compacted.
+     * @param compactedVariables The map of variables in the compacted model component which have already been
+     * compacted and their associated source variable.
+     * @return zero on success.
+     */
+    int createCompactedVariable(iface::cellml_api::CellMLComponent* compactedModelComponent,
+                                iface::cellml_api::CellMLVariable* sourceVariable,
+                                std::map<ObjRef<iface::cellml_api::CellMLVariable>,
+                                         ObjRef<iface::cellml_api::CellMLVariable> >& compactedVariables);
+
+    /**
      * Compact the given source variable as the specified variable. Will work out how the source variable is
      * defined and ensure all required variables are also defined in the variable's component, along with any
-     * required math.
+     * required math. This method should be used when you already have created the variable in the compacted
+     * model component.
      * @param variable The copy of the source variable in the compacted model component.
      * @param sourceVariable The actual source variable from the original model.
-     * @param compactedVariables The list of variables in the compacted model component to actual source
-     * variables in the original model.
+     * @param compactedVariables The map of variables in the compacted model component which have already been
+     * compacted and their associated source variable.
      * @return zero on success.
      */
     int compactVariable(iface::cellml_api::CellMLVariable* variable,

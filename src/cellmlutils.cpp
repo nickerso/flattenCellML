@@ -302,6 +302,7 @@ std::wstring CellmlUtils::createUnitsFromCanonical(iface::cellml_api::Model *mod
     {
         ObjRef<iface::cellml_services::BaseUnitInstance> bu = canonicalUnits->fetchBaseUnit(i);
         ObjRef<iface::cellml_api::Unit> unit = model->createUnit();
+        /// @todo Need to check that these units are being defined correctly.
         unit->units(bu->unit()->name());
         unit->multiplier(bu->prefix());
         unit->offset(bu->offset());
@@ -366,12 +367,28 @@ int CellmlUtils::connectVariables(iface::cellml_api::CellMLVariable *v1, iface::
     return returnCode;
 }
 
-int CellmlUtils::compactVariable(iface::cellml_api::CellMLVariable *variable,
-                                 iface::cellml_api::CellMLVariable *sourceVariable,
-                                 std::map<ObjRef<iface::cellml_api::CellMLVariable>,
-                                          ObjRef<iface::cellml_api::CellMLVariable> >& compactedVariables)
+int CellmlUtils::createCompactedVariable(
+        iface::cellml_api::CellMLComponent* compactedModel,
+        iface::cellml_api::CellMLVariable *sourceVariable,
+        std::map<ObjRef<iface::cellml_api::CellMLVariable>,
+        ObjRef<iface::cellml_api::CellMLVariable> >& compactedVariables)
 {
     int returnCode = 0;
+
+    ObjRef<iface::cellml_api::CellMLVariable> variable =
+            createVariableWithMatchingUnits(compactedModel, sourceVariable);
+    variable->publicInterface(iface::cellml_api::INTERFACE_OUT);
+    returnCode = compactVariable(variable, sourceVariable, compactedVariables);
+    return returnCode;
+}
+
+int CellmlUtils::compactVariable(iface::cellml_api::CellMLVariable* variable,
+                                 iface::cellml_api::CellMLVariable *sourceVariable,
+                                 std::map<ObjRef<iface::cellml_api::CellMLVariable>,
+                                 ObjRef<iface::cellml_api::CellMLVariable> >& compactedVariables)
+{
+    int returnCode = 0;
+
     // add the variable to the compacted variable list so that we don't try to work on in multiple times
     // need to be sure to remove it if any error occurs.
     compactedVariables[sourceVariable] = variable;
@@ -388,7 +405,8 @@ int CellmlUtils::compactVariable(iface::cellml_api::CellMLVariable *variable,
         case DIFFERENTIAL:
         case ALGEBRACIC_LHS:
         {
-            std::wcout << L"Found a diff or equation: " << mathml << std::endl;
+            //std::wcout << L"Found a diff or equation: " << mathml << std::endl;
+
         } break;
         case CONSTANT_PARAMETER_EQUATION:
         {
