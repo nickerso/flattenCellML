@@ -29,8 +29,8 @@ if (WIN32)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4290 /wd4091")
     add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 else(WIN32)
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99")
-    add_definitions(-Wall -Werror)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+    add_definitions(-std=c++11 -Wall -Werror)
 endif(WIN32)
 ADD_DEFINITIONS(
    ${LIBXML2_DEFINITIONS}
