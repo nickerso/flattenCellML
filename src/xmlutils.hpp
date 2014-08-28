@@ -3,6 +3,7 @@
 
 #include <utility>
 #include <string>
+#include <vector>
 
 class XmlUtils
 {
@@ -64,6 +65,12 @@ public:
      * @return The pair of variable names in the equality relationship.
      */
     std::pair<std::wstring, std::wstring> simpleEqualityGetVariableNames();
+
+    /**
+     * Find all the CellML variable names used in the current MathML document.
+     * @return A list of all the variable names found in the current document. Each name will only appear once.
+     */
+    std::vector<std::wstring> getCiList();
 
 private:
     void* mCurrentDoc;

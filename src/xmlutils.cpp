@@ -3,6 +3,7 @@
 #include <cstring>
 #include <iostream>
 #include <vector>
+#include <algorithm>
 #include <libxml/parser.h>
 #include <libxml/xpath.h>
 #include <libxml/xpathInternals.h>
@@ -282,4 +283,27 @@ std::pair<std::wstring, std::wstring> XmlUtils::simpleEqualityGetVariableNames()
     ci = getTextContent("/mathml:apply/mathml:ci[2]");
     if (! ci.empty()) p.second = string2wstring(ci);
     return p;
+}
+
+std::vector<std::wstring> XmlUtils::getCiList()
+{
+    std::vector<std::wstring> names;
+    xmlDocPtr doc = static_cast<xmlDocPtr>(mCurrentDoc);
+    xmlNodeSetPtr results = executeXPath(doc, BAD_CAST "//mathml:ci");
+    if (results)
+    {
+        int i, n = xmlXPathNodeSetGetLength(results);
+        for (i=0; i < n; ++i)
+        {
+            xmlNodePtr n = xmlXPathNodeSetItem(results, i);
+            xmlChar* s = xmlNodeGetContent(n);
+            std::wstring name = string2wstring((char*)s);
+            name = removeAll(name, L' ');
+            //std::wcout << L"ci result: '" << name << L"'" << std::endl;
+            xmlFree(s);
+            if (std::find(names.begin(), names.end(), name) == names.end()) names.push_back(name);
+        }
+        xmlXPathFreeNodeSet(results);
+    }
+    return names;
 }

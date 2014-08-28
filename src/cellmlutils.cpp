@@ -408,11 +408,11 @@ int CellmlUtils::compactVariable(iface::cellml_api::CellMLVariable* variable,
         case ALGEBRACIC_LHS:
         {
             std::wcout << L"Found a diff or equation: " << mathml << std::endl;
-//            std::vector<std::wstring> ciList = xutils.getCiList();
-//            for (const auto& n: ciList)
-//            {
-//                if
-//            }
+            std::vector<std::wstring> ciList = xutils.getCiList();
+            for (const auto& n: ciList)
+            {
+                std::wcout << L"compacting variable: " << n << L"; from the equation..." << std::endl;
+            }
         } break;
         case CONSTANT_PARAMETER_EQUATION:
         {
