@@ -220,6 +220,14 @@ private:
     int defineConstantParameterEquation(iface::cellml_api::CellMLComponent* component,
                                         const std::wstring& vname, double value,
                                         const std::wstring& unitsName);
+
+    /**
+     * Add the given math to the MathML annotation for the given component.
+     * @param component The component to which the MathML annotation should be added.
+     * @param math The block of MathML to add.
+     * @return zero on success.
+     */
+    int addMathToComponent(iface::cellml_api::CellMLComponent* component, const std::wstring& math);
 };
 
 #endif // CELLMLUTILS_HPP

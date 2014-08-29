@@ -412,6 +412,8 @@ int CellmlUtils::compactVariable(iface::cellml_api::CellMLVariable* variable,
             std::vector<std::wstring> ciList = xutils.getCiList();
             ObjRef<iface::cellml_api::CellMLComponent> sourceComponent(QueryInterface(sourceVariable->parentElement()));
             ObjRef<iface::cellml_api::CellMLComponent> component(QueryInterface(variable->parentElement()));
+            // keep track of the variable name mappings
+            std::map<std::wstring, std::wstring> variableMappings;
             for (const auto& n: ciList)
             {
                 std::wcout << L"compacting variable: " << n << L"; from the equation..." << std::endl;
@@ -423,6 +425,7 @@ int CellmlUtils::compactVariable(iface::cellml_api::CellMLVariable* variable,
                     {
                         ObjRef<iface::cellml_api::CellMLVariable> ciCompacted =
                                 createCompactedVariable(component, ciSourceVariable, compactedVariables);
+                        variableMappings[n] = ciCompacted->name();
                     }
                     else
                     {
@@ -437,6 +440,13 @@ int CellmlUtils::compactVariable(iface::cellml_api::CellMLVariable* variable,
                     returnCode = -6;
                     break;
                 }
+            }
+            if (returnCode == 0)
+            {
+                // rename the variables in the equation
+                for (const auto& n: ciList) mathml = replaceAll(mathml, n, variableMappings[n]);
+                // and add the equation to the math for this component
+                returnCode = addMathToComponent(component, mathml);
             }
         } break;
         case CONSTANT_PARAMETER_EQUATION:
@@ -563,11 +573,20 @@ std::wstring CellmlUtils::determineSourceVariableType(iface::cellml_api::CellMLV
     return mathString;
 }
 
+int CellmlUtils::addMathToComponent(iface::cellml_api::CellMLComponent* component, const std::wstring& math)
+{
+    int returnCode = 0;
+    std::wstring mathml = math;
+    // make sure we add in any existing annotations...
+    mathml += mAnnotations->getStringAnnotation(component, MATH_ANNOTATION_KEY);
+    mAnnotations->setStringAnnotation(component, MATH_ANNOTATION_KEY, mathml);
+    return returnCode;
+}
+
 int CellmlUtils::defineConstantParameterEquation(iface::cellml_api::CellMLComponent* component,
                                                  const std::wstring& vname, double value,
                                                  const std::wstring& unitsName)
 {
-    int returnCode = 0;
     std::wstring mathml = L"<apply><eq/><ci>";
     mathml += vname;
     mathml += L"</ci><cn cellml:units=\"";
@@ -575,10 +594,7 @@ int CellmlUtils::defineConstantParameterEquation(iface::cellml_api::CellMLCompon
     mathml += L"\">";
     mathml += formatNumber(value);
     mathml += L"</cn></apply>";
-    // make sure we add in any existing annotations...
-    mathml += mAnnotations->getStringAnnotation(component, MATH_ANNOTATION_KEY);
-    mAnnotations->setStringAnnotation(component, MATH_ANNOTATION_KEY, mathml);
-    return returnCode;
+    return addMathToComponent(component, mathml);
 }
 
 std::wstring CellmlUtils::modelToString(iface::cellml_api::Model *model)

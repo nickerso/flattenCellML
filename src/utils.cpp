@@ -3,6 +3,7 @@
 #include <cstdlib>
 #include <locale>
 #include <codecvt>
+#include <iostream>
 
 std::string wstring2string(const std::wstring &str)
 {
@@ -75,3 +76,19 @@ std::wstring removeAll(const std::wstring& src, wchar_t original)
     return copy;
 }
 
+std::wstring replaceAll(const std::wstring& src, const std::wstring& original,
+                        const std::wstring& replacement)
+{
+    std::wcout << L"Replacing all occurances of: '" << original << L"' with '" << replacement << L"' in the string: "
+               << src << std::endl;
+    std::wstring copy = src;
+    std::size_t pos = 0;
+    while (1)
+    {
+        pos = copy.find(original, pos);
+        if (pos == std::wstring::npos) break;
+        copy.replace(pos, original.size(), replacement);
+        pos += replacement.length();
+    }
+    return copy;
+}
