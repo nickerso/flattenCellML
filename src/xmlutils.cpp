@@ -307,3 +307,28 @@ std::vector<std::wstring> XmlUtils::getCiList()
     }
     return names;
 }
+
+std::wstring XmlUtils::updateCiElements(const std::map<std::wstring, std::wstring> &nameMapping)
+{
+    xmlDocPtr doc = static_cast<xmlDocPtr>(mCurrentDoc);
+    xmlNodeSetPtr results = executeXPath(doc, BAD_CAST "//mathml:ci");
+    if (results)
+    {
+        int i, n = xmlXPathNodeSetGetLength(results);
+        for (i=0; i < n; ++i)
+        {
+            xmlNodePtr n = xmlXPathNodeSetItem(results, i);
+            xmlChar* s = xmlNodeGetContent(n);
+            std::wstring name = string2wstring((char*)s);
+            name = removeAll(name, L' ');
+            xmlFree(s);
+            if (nameMapping.count(name))
+            {
+                std::string newName = wstring2string(nameMapping.at(name));
+                xmlNodeSetContent(n, BAD_CAST newName.c_str());
+            }
+        }
+        xmlXPathFreeNodeSet(results);
+    }
+    return nodeToString(xmlDocGetRootElement(doc));
+}

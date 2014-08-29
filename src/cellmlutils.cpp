@@ -443,8 +443,10 @@ int CellmlUtils::compactVariable(iface::cellml_api::CellMLVariable* variable,
             }
             if (returnCode == 0)
             {
+                //std::wcout << L"Math before the update of names: " << mathml << std::endl;
                 // rename the variables in the equation
-                for (const auto& n: ciList) mathml = replaceAll(mathml, n, variableMappings[n]);
+                mathml = xutils.updateCiElements(variableMappings);
+                //std::wcout << L"Math after the update of names: " << mathml << std::endl;
                 // and add the equation to the math for this component
                 returnCode = addMathToComponent(component, mathml);
             }

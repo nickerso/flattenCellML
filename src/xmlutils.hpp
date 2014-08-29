@@ -72,6 +72,13 @@ public:
      */
     std::vector<std::wstring> getCiList();
 
+    /**
+     * Update all the ci elements in the current MathML document with the given name mappings.
+     * @param nameMapping The mapping from existing name to a new name.
+     * @return The updated MathML document string.
+     */
+    std::wstring updateCiElements(const std::map<std::wstring, std::wstring>& nameMapping);
+
 private:
     void* mCurrentDoc;
 
