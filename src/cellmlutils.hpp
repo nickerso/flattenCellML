@@ -115,12 +115,15 @@ public:
      * @param sourceVariable The variable in the source model which is being compacted.
      * @param compactedVariables The map of variables in the compacted model component which have already been
      * compacted and their associated source variable.
-     * @return zero on success.
+     * @return An existing variable in the compacted model component if one already exists for the given source variable,
+     * or a newly created variable representing the compacted version of the source variable. If an error occurs, NULL is
+     * returned.
      */
-    int createCompactedVariable(iface::cellml_api::CellMLComponent* compactedModelComponent,
-                                iface::cellml_api::CellMLVariable* sourceVariable,
-                                std::map<ObjRef<iface::cellml_api::CellMLVariable>,
-                                         ObjRef<iface::cellml_api::CellMLVariable> >& compactedVariables);
+    ObjRef<iface::cellml_api::CellMLVariable> createCompactedVariable(
+            iface::cellml_api::CellMLComponent* compactedModelComponent,
+            iface::cellml_api::CellMLVariable* sourceVariable,
+            std::map<ObjRef<iface::cellml_api::CellMLVariable>,
+                     ObjRef<iface::cellml_api::CellMLVariable> >& compactedVariables);
 
     /**
      * Compact the given source variable as the specified variable. Will work out how the source variable is

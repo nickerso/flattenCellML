@@ -367,19 +367,20 @@ int CellmlUtils::connectVariables(iface::cellml_api::CellMLVariable *v1, iface::
     return returnCode;
 }
 
-int CellmlUtils::createCompactedVariable(
+ObjRef<iface::cellml_api::CellMLVariable> CellmlUtils::createCompactedVariable(
         iface::cellml_api::CellMLComponent* compactedModel,
         iface::cellml_api::CellMLVariable *sourceVariable,
         std::map<ObjRef<iface::cellml_api::CellMLVariable>,
         ObjRef<iface::cellml_api::CellMLVariable> >& compactedVariables)
 {
-    int returnCode = 0;
-
+    // does the variable already exist?
+    if (compactedVariables.count(sourceVariable) == 1) return compactedVariables[sourceVariable];
     ObjRef<iface::cellml_api::CellMLVariable> variable =
             createVariableWithMatchingUnits(compactedModel, sourceVariable);
     variable->publicInterface(iface::cellml_api::INTERFACE_OUT);
-    returnCode = compactVariable(variable, sourceVariable, compactedVariables);
-    return returnCode;
+    compactVariable(variable, sourceVariable, compactedVariables);
+    if (compactedVariables.count(sourceVariable) == 1) return compactedVariables[sourceVariable];
+    return NULL;
 }
 
 int CellmlUtils::compactVariable(iface::cellml_api::CellMLVariable* variable,
@@ -407,11 +408,35 @@ int CellmlUtils::compactVariable(iface::cellml_api::CellMLVariable* variable,
         case DIFFERENTIAL:
         case ALGEBRACIC_LHS:
         {
-            std::wcout << L"Found a diff or equation: " << mathml << std::endl;
+            //std::wcout << L"Found a diff or equation: " << mathml << std::endl;
             std::vector<std::wstring> ciList = xutils.getCiList();
+            ObjRef<iface::cellml_api::CellMLComponent> sourceComponent(QueryInterface(sourceVariable->parentElement()));
+            ObjRef<iface::cellml_api::CellMLComponent> component(QueryInterface(variable->parentElement()));
             for (const auto& n: ciList)
             {
                 std::wcout << L"compacting variable: " << n << L"; from the equation..." << std::endl;
+                ObjRef<iface::cellml_api::CellMLVariable> ciVariable = sourceComponent->variables()->getVariable(n);
+                if (ciVariable)
+                {
+                    ObjRef<iface::cellml_api::CellMLVariable> ciSourceVariable = ciVariable->sourceVariable();
+                    if (ciSourceVariable)
+                    {
+                        ObjRef<iface::cellml_api::CellMLVariable> ciCompacted =
+                                createCompactedVariable(component, ciSourceVariable, compactedVariables);
+                    }
+                    else
+                    {
+                        std::wcerr << L"ERROR: unable to get the source variable for a ci variable" << std::endl;
+                        returnCode = -5;
+                        break;
+                    }
+                }
+                else
+                {
+                    std::wcerr << L"ERROR: unable to get the ci variable in the source component." << std::endl;
+                    returnCode = -6;
+                    break;
+                }
             }
         } break;
         case CONSTANT_PARAMETER_EQUATION:

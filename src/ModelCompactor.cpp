@@ -55,16 +55,8 @@ private:
     defineCompactedSourceVariable(iface::cellml_api::CellMLComponent* compactedModel,
                                   iface::cellml_api::CellMLVariable* sourceVariable)
     {
-
-        if (mSourceVariables.count(sourceVariable)) return mSourceVariables[sourceVariable];
-        if (mCellml.createCompactedVariable(compactedModel, sourceVariable, mSourceVariables) != 0)
-        {
-            std::wcerr << L"ERROR compacting source variable: " << sourceVariable->componentName() << L" / "
-                       << sourceVariable->name() << std::endl;
-            return NULL;
-        }
-        if (mSourceVariables.count(sourceVariable) == 0) return NULL;
-        return mSourceVariables[sourceVariable];
+        // hand over to the CellML utils...
+        return mCellml.createCompactedVariable(compactedModel, sourceVariable, mSourceVariables);
     }
 
 public:
