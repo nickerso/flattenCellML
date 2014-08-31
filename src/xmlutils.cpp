@@ -200,6 +200,14 @@ std::wstring XmlUtils::matchAlgebraicLhs(const std::wstring &vname)
     xpath += wstring2string(vname);
     xpath += "\"]/following-sibling::mathml:apply/parent::mathml:apply";
     std::wstring eq = extractSingleNode(xpath);
+    if (eq.empty())
+    {
+        // check for a piecewise
+        xpath = "/mathml:math/mathml:apply/mathml:eq/following-sibling::mathml:ci[position() = 1 and normalize-space(text()) = \"";
+        xpath += wstring2string(vname);
+        xpath += "\"]/following-sibling::mathml:piecewise/parent::mathml:apply";
+        eq = extractSingleNode(xpath);
+    }
     return eq;
 }
 
