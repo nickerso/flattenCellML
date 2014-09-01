@@ -221,6 +221,17 @@ std::wstring XmlUtils::matchDifferential(const std::wstring &vname)
     return eq;
 }
 
+bool XmlUtils::matchVariableOfIntegration(const std::wstring &vname)
+{
+    std::string xpath = "/mathml:math/mathml:apply/mathml:eq/following-sibling::mathml:apply[1]/mathml:diff/"
+            "following-sibling::mathml:bvar/mathml:ci[normalize-space(text()) = \"";
+    xpath += wstring2string(vname);
+    xpath += "\"]/parent::mathml:bvar/parent::mathml:apply/parent::mathml:apply";
+    std::wstring eq = extractSingleNode(xpath);
+    if (eq.empty()) return false;
+    return true;
+}
+
 int XmlUtils::numericalAssignmentGetValue(double *value, std::wstring &unitsName)
 {
     int returnCode = 0;

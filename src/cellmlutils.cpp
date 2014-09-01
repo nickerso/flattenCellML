@@ -206,6 +206,7 @@ CellmlUtils::CellmlUtils()
     ObjRef<iface::cellml_services::AnnotationToolService> ats =  CreateAnnotationToolService();
     // create one annotation set to use for our annotations.
     mAnnotations = ats->createAnnotationSet();
+    mVariableOfIntegration = NULL;
 }
 
 CellmlUtils::~CellmlUtils()
@@ -425,7 +426,14 @@ int CellmlUtils::compactVariable(iface::cellml_api::CellMLVariable* variable,
                     {
                         ObjRef<iface::cellml_api::CellMLVariable> ciCompacted =
                                 createCompactedVariable(component, ciSourceVariable, compactedVariables);
-                        variableMappings[n] = ciCompacted->name();
+                        if (ciCompacted) variableMappings[n] = ciCompacted->name();
+                        else
+                        {
+                            std::wcerr << L"ERROR: something went wrong compacting the source variable of a ci variable"
+                                       << std::endl;
+                            returnCode = -7;
+                            break;
+                        }
                     }
                     else
                     {
@@ -463,8 +471,24 @@ int CellmlUtils::compactVariable(iface::cellml_api::CellMLVariable* variable,
                                                          unitsName);
         } break;
         case CONSTANT_PARAMETER:
-        case VARIABLE_OF_INTEGRATION:
+            // will never happen?
             break;
+        case VARIABLE_OF_INTEGRATION:
+        {
+            // in case we find one
+            if (mVariableOfIntegration)
+            {
+                if (mVariableOfIntegration != sourceVariable)
+                {
+                    std::wcerr << L"ERROR: we already have a variable of integration: "
+                               << mVariableOfIntegration->componentName() << L" / " << mVariableOfIntegration->name()
+                               << L"; which is not the current source variable: " << sourceVariable->componentName()
+                               << L" / " << sourceVariable->name() << std::endl;
+                    returnCode = -11;
+                }
+            }
+            else mVariableOfIntegration = sourceVariable;
+        } break;
         case SIMPLE_EQUALITY:
         {
             // we can replace the current source variable with the equal variable
@@ -520,6 +544,31 @@ int CellmlUtils::compactVariable(iface::cellml_api::CellMLVariable* variable,
         compactedVariables.erase(sourceVariable);
         return -1;
     }
+    else if (vt == UNKNOWN)
+    {
+        // no initial value attribute found, so make sure variable is defined somehow
+        // we can have at most one variable of integration that might have an unknown type
+        if (mVariableOfIntegration)
+        {
+            if (sourceVariable == mVariableOfIntegration)
+            {
+                // its all good?
+                return 0;
+            }
+        }
+        else
+        {
+            mVariableOfIntegration = sourceVariable;
+            return 0;
+        }
+        std::wcerr << L"Source variable appears to be undefined: " << sourceVariable->componentName() << L" / "
+                   << sourceVariable->name() << std::endl;
+        std::wcerr << L"Current assumed variable of integration: " << mVariableOfIntegration->componentName() << L" / "
+                   << mVariableOfIntegration->name() << std::endl;
+        // unsuccessfully compacted, so remove it to the list of compacted source variables.
+        compactedVariables.erase(sourceVariable);
+        return -10;
+    }
     return 0;
 }
 
@@ -568,6 +617,13 @@ std::wstring CellmlUtils::determineSourceVariableType(iface::cellml_api::CellMLV
             if (! mathString.empty())
             {
                 variableType = DIFFERENTIAL;
+                break;
+            }
+            /// @todo This will only work if there is math in the VoI's source component. Not the case when
+            /// defining "time" in its own component.
+            if (xmlUtils.matchVariableOfIntegration(variable->name()))
+            {
+                variableType = VARIABLE_OF_INTEGRATION;
                 break;
             }
         }

@@ -155,6 +155,7 @@ private:
     ObjRef<iface::cellml_services::CUSESBootstrap> mCusesBootstrap;
     ObjRef<iface::cellml_services::CUSES> mSourceCuses;
     ObjRef<iface::cellml_services::AnnotationSet> mAnnotations;
+    ObjRef<iface::cellml_api::CellMLVariable> mVariableOfIntegration;
     enum SourceVariableType
     {
         UNKNOWN = 0,

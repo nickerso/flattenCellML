@@ -51,6 +51,13 @@ public:
     std::wstring matchDifferential(const std::wstring& vname);
 
     /**
+     * Returns true if the given variable matches the pattern for a variable of integration.
+     * @param vname The name of the variable to search for.
+     * @return true if the given variable is a variable of integration, false otherwise.
+     */
+    bool matchVariableOfIntegration(const std::wstring &vname);
+
+    /**
      * The current document is expected to be a simple MathML numerical assignment, and this function will return
      * the numerical value being assigned and the units specified in the math.
      * @param value The numerical value being assigned.
