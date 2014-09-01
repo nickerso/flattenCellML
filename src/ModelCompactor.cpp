@@ -103,8 +103,7 @@ public:
             rl << L"Adding variables from original model component: " << cname << L"; to the new model.";
             report.addReportLine(rl.str());
             rl.str(L"");
-            report.setIndentString(L"+-- ");
-            report.setIndentLevel(1);
+            report.incrementIndentLevel();
             std::wcout << L"Adding variables from component: " << cname << L"; to the new model."
                           << std::endl;
             ObjRef<iface::cellml_api::CellMLVariableSet> vs = lc->variables();
@@ -118,7 +117,7 @@ public:
                 rl << vname << L" is represented as: " << tmpName;
                 report.addReportLine(rl.str());
                 rl.str(L"");
-                report.setIndentString(L"   |-- ");
+                report.incrementIndentLevel();
                 std::wcout << L"\t" << vname << L" ==> " << tmpName << std::endl;
                 if (mapLocalVariable(v, localComponent, compactedComponent, report) == 0)
                 {
@@ -135,9 +134,9 @@ public:
                                << std::endl;
                     return NULL;
                 }
-                report.setIndentString(L"+-- ");
+                report.decrementIndentLevel();
             }
-            report.setIndentString(L"");
+            report.decrementIndentLevel();
         }
         // serialise the generated model to a string to catch any special annotations we might
         // have created.
@@ -152,8 +151,6 @@ ObjRef<iface::cellml_api::Model> compactModel(iface::cellml_api::Model* model, C
 {
     ObjRef<iface::cellml_api::Model> new_model;
     {
-        report.setIndentLevel(0);
-        report.setIndentString(L"\t");
         ModelCompactor compactor;
         new_model = compactor.CompactModel(model, report);
     }

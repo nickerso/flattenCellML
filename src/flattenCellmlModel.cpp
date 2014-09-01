@@ -73,6 +73,8 @@ int main(int argc, char* argv[])
 
     // Now we can do stuff
     CompactorReport report;
+    report.setIndentString(L"+== ");
+    report.setIndentLevel(0);
     ObjRef<cml::Model> new_model;
     if (mode == "model") new_model = flattenModel(model);
     else new_model = compactModel(model, report);
@@ -80,6 +82,8 @@ int main(int argc, char* argv[])
     if (new_model == NULL)
     {
         std::cerr << "Something went wrong!" << std::endl;
+        std::wstring reportString = report.getReport();
+        if (! reportString.empty()) std::wcout << reportString << std::endl;
         return 2;
     }
 

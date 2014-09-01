@@ -22,6 +22,16 @@ public:
 
     void addReportLine(const std::wstring& line);
 
+    void incrementIndentLevel()
+    {
+        ++mIndentLevel;
+    }
+
+    void decrementIndentLevel()
+    {
+        --mIndentLevel;
+    }
+
 private:
     std::wstringstream mReport;
     std::wstring mIndentString;
