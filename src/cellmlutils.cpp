@@ -368,18 +368,24 @@ int CellmlUtils::connectVariables(iface::cellml_api::CellMLVariable *v1, iface::
     return returnCode;
 }
 
-ObjRef<iface::cellml_api::CellMLVariable> CellmlUtils::createCompactedVariable(
-        iface::cellml_api::CellMLComponent* compactedModel,
+ObjRef<iface::cellml_api::CellMLVariable> CellmlUtils::createCompactedVariable(iface::cellml_api::CellMLComponent* compactedModel,
         iface::cellml_api::CellMLVariable *sourceVariable,
         std::map<ObjRef<iface::cellml_api::CellMLVariable>,
-        ObjRef<iface::cellml_api::CellMLVariable> >& compactedVariables)
+        ObjRef<iface::cellml_api::CellMLVariable> >& compactedVariables, CompactorReport& report)
 {
     // does the variable already exist?
-    if (compactedVariables.count(sourceVariable) == 1) return compactedVariables[sourceVariable];
+    if (compactedVariables.count(sourceVariable) == 1)
+    {
+        std::wstringstream rl;
+        rl << L"compacted source variable already exists: " << compactedVariables[sourceVariable]->componentName()
+           << L" / " << compactedVariables[sourceVariable]->name();
+        report.addReportLine(rl.str());
+        return compactedVariables[sourceVariable];
+    }
     ObjRef<iface::cellml_api::CellMLVariable> variable =
             createVariableWithMatchingUnits(compactedModel, sourceVariable);
     variable->publicInterface(iface::cellml_api::INTERFACE_OUT);
-    compactVariable(variable, sourceVariable, compactedVariables);
+    compactVariable(variable, sourceVariable, compactedVariables, report);
     if (compactedVariables.count(sourceVariable) == 1) return compactedVariables[sourceVariable];
     return NULL;
 }
@@ -387,7 +393,8 @@ ObjRef<iface::cellml_api::CellMLVariable> CellmlUtils::createCompactedVariable(
 int CellmlUtils::compactVariable(iface::cellml_api::CellMLVariable* variable,
                                  iface::cellml_api::CellMLVariable *sourceVariable,
                                  std::map<ObjRef<iface::cellml_api::CellMLVariable>,
-                                 ObjRef<iface::cellml_api::CellMLVariable> >& compactedVariables)
+                                 ObjRef<iface::cellml_api::CellMLVariable> >& compactedVariables,
+                                 CompactorReport& report)
 {
     int returnCode = 0;
 
@@ -425,7 +432,7 @@ int CellmlUtils::compactVariable(iface::cellml_api::CellMLVariable* variable,
                     if (ciSourceVariable)
                     {
                         ObjRef<iface::cellml_api::CellMLVariable> ciCompacted =
-                                createCompactedVariable(component, ciSourceVariable, compactedVariables);
+                                createCompactedVariable(component, ciSourceVariable, compactedVariables, report);
                         if (ciCompacted) variableMappings[n] = ciCompacted->name();
                         else
                         {
@@ -503,7 +510,7 @@ int CellmlUtils::compactVariable(iface::cellml_api::CellMLVariable* variable,
                         component->variables()->getVariable(vnames.second)->sourceVariable();
                 if (equalSourceVariable)
                 {
-                    returnCode = compactVariable(variable, equalSourceVariable, compactedVariables);
+                    returnCode = compactVariable(variable, equalSourceVariable, compactedVariables, report);
                 }
                 else
                 {

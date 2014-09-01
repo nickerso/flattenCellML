@@ -58,6 +58,7 @@ SET(flattenCellmlModel_SRCS
   src/utils.cpp
   src/cellmlutils.cpp
   src/xmlutils.cpp
+  src/compactorreport.cpp
 )
 
 set(EXECUTABLE_NAME "flattenCellmlModel")

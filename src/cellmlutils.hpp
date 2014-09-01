@@ -8,6 +8,8 @@
 #include <IfaceCUSES.hxx>
 #include <IfaceAnnoTools.hxx>
 
+#include "compactorreport.hpp"
+
 class CellmlUtils
 {
 public:
@@ -115,6 +117,7 @@ public:
      * @param sourceVariable The variable in the source model which is being compacted.
      * @param compactedVariables The map of variables in the compacted model component which have already been
      * compacted and their associated source variable.
+     * @param report The compactor report object to keep track of the model compaction report.
      * @return An existing variable in the compacted model component if one already exists for the given source variable,
      * or a newly created variable representing the compacted version of the source variable. If an error occurs, NULL is
      * returned.
@@ -123,7 +126,8 @@ public:
             iface::cellml_api::CellMLComponent* compactedModelComponent,
             iface::cellml_api::CellMLVariable* sourceVariable,
             std::map<ObjRef<iface::cellml_api::CellMLVariable>,
-                     ObjRef<iface::cellml_api::CellMLVariable> >& compactedVariables);
+                     ObjRef<iface::cellml_api::CellMLVariable> >& compactedVariables,
+            CompactorReport& report);
 
     /**
      * Compact the given source variable as the specified variable. Will work out how the source variable is
@@ -134,12 +138,14 @@ public:
      * @param sourceVariable The actual source variable from the original model.
      * @param compactedVariables The map of variables in the compacted model component which have already been
      * compacted and their associated source variable.
+     * @param report The compactor report object to keep track of the model compaction report.
      * @return zero on success.
      */
     int compactVariable(iface::cellml_api::CellMLVariable* variable,
                         iface::cellml_api::CellMLVariable* sourceVariable,
                         std::map<ObjRef<iface::cellml_api::CellMLVariable>,
-                                 ObjRef<iface::cellml_api::CellMLVariable> >& compactedVariables);
+                                 ObjRef<iface::cellml_api::CellMLVariable> >& compactedVariables,
+                        CompactorReport& report);
 
     /**
      * Generate a serialised version of the given model, with any annotations we know about

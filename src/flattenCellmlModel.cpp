@@ -10,6 +10,7 @@
 #include "utils.hpp"
 #include "VersionConverter.hpp"
 #include "ModelCompactor.hpp"
+#include "compactorreport.hpp"
 
 // Save typing
 namespace cml = iface::cellml_api;
@@ -71,9 +72,10 @@ int main(int argc, char* argv[])
     else std::wcout << "'." << std::endl;
 
     // Now we can do stuff
+    CompactorReport report;
     ObjRef<cml::Model> new_model;
     if (mode == "model") new_model = flattenModel(model);
-    else new_model = compactModel(model);
+    else new_model = compactModel(model, report);
 
     if (new_model == NULL)
     {
@@ -98,6 +100,9 @@ int main(int argc, char* argv[])
         // Write to stdout
         std::wcout << content.c_str();
     }
+
+    std::wstring reportString = report.getReport();
+    if (! reportString.empty()) std::wcout << reportString << std::endl;
 
     // and exit
     return 0;

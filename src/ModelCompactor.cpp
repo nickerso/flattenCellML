@@ -4,6 +4,7 @@
 #include <fstream>
 #include <map>
 
+#include "compactorreport.hpp"
 #include "ModelCompactor.hpp"
 #include "cellmlutils.hpp"
 
@@ -20,8 +21,6 @@ private:
     CellmlUtils mCellml;
     // keeping track of source variables, should work?
     std::map<ObjRef<iface::cellml_api::CellMLVariable>, ObjRef<iface::cellml_api::CellMLVariable> > mSourceVariables;
-    // to keep track of things we might want to report to the user?
-    std::vector<std::wstring> mReport;
 
     std::wstring defineUnits(iface::cellml_api::Units* sourceUnits)
     {
@@ -31,7 +30,8 @@ private:
 
     int mapLocalVariable(iface::cellml_api::CellMLVariable* sourceVariable,
                          iface::cellml_api::CellMLComponent* destinationComponent,
-                         iface::cellml_api::CellMLComponent* compactedModel)
+                         iface::cellml_api::CellMLComponent* compactedModel,
+                         CompactorReport& report)
     {
         ObjRef<iface::cellml_api::CellMLVariable> variable =
                 mCellml.createVariableWithMatchingUnits(destinationComponent, sourceVariable);
@@ -40,7 +40,7 @@ private:
         // and connect it to the source variable
         ObjRef<iface::cellml_api::CellMLVariable> source = sourceVariable->sourceVariable();
         ObjRef<iface::cellml_api::CellMLVariable> compactedModelSourceVariable =
-                defineCompactedSourceVariable(compactedModel, source);
+                defineCompactedSourceVariable(compactedModel, source, report);
         if (compactedModelSourceVariable == NULL)
         {
             std::wcerr << L"ERROR compacting source variable: " << source->componentName() << L" / "
@@ -53,16 +53,21 @@ private:
 
     ObjRef<iface::cellml_api::CellMLVariable>
     defineCompactedSourceVariable(iface::cellml_api::CellMLComponent* compactedModel,
-                                  iface::cellml_api::CellMLVariable* sourceVariable)
+                                  iface::cellml_api::CellMLVariable* sourceVariable,
+                                  CompactorReport& report)
     {
         // hand over to the CellML utils...
-        return mCellml.createCompactedVariable(compactedModel, sourceVariable, mSourceVariables);
+        return mCellml.createCompactedVariable(compactedModel, sourceVariable, mSourceVariables, report);
     }
 
 public:
-    ObjRef<iface::cellml_api::Model> CompactModel(iface::cellml_api::Model* modelIn)
+    ObjRef<iface::cellml_api::Model> CompactModel(iface::cellml_api::Model* modelIn, CompactorReport& report)
     {
         std::wstring modelName = modelIn->name();
+        std::wstringstream rl;
+        rl << L"Compacting model " << modelName << L" to a single CellML 1.0 component.";
+        report.addReportLine(rl.str());
+        rl.str(L"");
         std::wcout << L"Compacting model " << modelName << L" to a single CellML 1.0 component."
                    << std::endl;
         // grab a clone of the source model before we do anything that might instantiate imports.
@@ -95,6 +100,11 @@ public:
             ObjRef<iface::cellml_api::CellMLComponent> lc = lci->nextComponent();
             if (lc == NULL) break;
             cname = lc->name();
+            rl << L"Adding variables from original model component: " << cname << L"; to the new model.";
+            report.addReportLine(rl.str());
+            rl.str(L"");
+            report.setIndentString(L"+-- ");
+            report.setIndentLevel(1);
             std::wcout << L"Adding variables from component: " << cname << L"; to the new model."
                           << std::endl;
             ObjRef<iface::cellml_api::CellMLVariableSet> vs = lc->variables();
@@ -105,10 +115,18 @@ public:
                 if (v == NULL) break;
                 vname = v->name();
                 tmpName = mCellml.uniqueVariableName(cname, vname);
+                rl << vname << L" is represented as: " << tmpName;
+                report.addReportLine(rl.str());
+                rl.str(L"");
+                report.setIndentString(L"   |-- ");
                 std::wcout << L"\t" << vname << L" ==> " << tmpName << std::endl;
-                if (mapLocalVariable(v, localComponent, compactedComponent) == 0)
+                if (mapLocalVariable(v, localComponent, compactedComponent, report) == 0)
                 {
                     ObjRef<iface::cellml_api::CellMLVariable> source = v->sourceVariable();
+                    rl << L"and maps to the source variable: " << source->componentName()
+                       << L" / " << source->name();
+                    report.addReportLine(rl.str());
+                    rl.str(L"");
                     std::wcout << L"\t\tmapped to source: " << source->name() << std::endl;
                 }
                 else
@@ -117,7 +135,9 @@ public:
                                << std::endl;
                     return NULL;
                 }
+                report.setIndentString(L"+-- ");
             }
+            report.setIndentString(L"");
         }
         // serialise the generated model to a string to catch any special annotations we might
         // have created.
@@ -128,12 +148,14 @@ public:
     }
 };
 
-ObjRef<iface::cellml_api::Model> compactModel(iface::cellml_api::Model* model)
+ObjRef<iface::cellml_api::Model> compactModel(iface::cellml_api::Model* model, CompactorReport& report)
 {
     ObjRef<iface::cellml_api::Model> new_model;
     {
+        report.setIndentLevel(0);
+        report.setIndentString(L"\t");
         ModelCompactor compactor;
-        new_model = compactor.CompactModel(model);
+        new_model = compactor.CompactModel(model, report);
     }
     return new_model;
 }
