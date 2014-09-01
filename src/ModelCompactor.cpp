@@ -113,7 +113,8 @@ public:
                 }
                 else
                 {
-                    std::wcerr << L"Error mapping local variable?" << std::endl;
+                    std::wcerr << L"Error mapping local variable: " << v->componentName() << L" / " << vname
+                               << std::endl;
                     return NULL;
                 }
             }
