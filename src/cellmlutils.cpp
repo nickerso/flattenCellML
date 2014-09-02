@@ -368,27 +368,36 @@ int CellmlUtils::connectVariables(iface::cellml_api::CellMLVariable *v1, iface::
     return returnCode;
 }
 
-ObjRef<iface::cellml_api::CellMLVariable> CellmlUtils::createCompactedVariable(iface::cellml_api::CellMLComponent* compactedModel,
-        iface::cellml_api::CellMLVariable *sourceVariable,
+ObjRef<iface::cellml_api::CellMLVariable>
+CellmlUtils::createCompactedVariable(iface::cellml_api::CellMLComponent* compactedModel,
+        iface::cellml_api::CellMLVariable *sourceModelVariable,
         std::map<ObjRef<iface::cellml_api::CellMLVariable>,
         ObjRef<iface::cellml_api::CellMLVariable> >& compactedVariables, CompactorReport& report)
 {
+    ObjRef<iface::cellml_api::CellMLVariable> sourceVariable = sourceModelVariable->sourceVariable();
+    if (sourceVariable == NULL)
+    {
+        std::wcerr << L"ERROR: Unable to get source variable for: " << sourceModelVariable->componentName()
+                   << L" / " << sourceModelVariable->name();
+        return NULL;
+    }
+    report.setVariableForCompaction(sourceModelVariable, sourceVariable);
     // does the variable already exist?
     if (compactedVariables.count(sourceVariable) == 1)
     {
-        std::wstringstream rl;
-        rl << L"compacted source variable already exists: " << compactedVariables[sourceVariable]->componentName()
-           << L" / " << compactedVariables[sourceVariable]->name();
-        report.addReportLine(rl.str());
+        report.setCompactedVariable(compactedVariables[sourceVariable]);
         return compactedVariables[sourceVariable];
     }
     ObjRef<iface::cellml_api::CellMLVariable> variable =
             createVariableWithMatchingUnits(compactedModel, sourceVariable);
     variable->publicInterface(iface::cellml_api::INTERFACE_OUT);
-    report.incrementIndentLevel();
     compactVariable(variable, sourceVariable, compactedVariables, report);
-    report.decrementIndentLevel();
-    if (compactedVariables.count(sourceVariable) == 1) return compactedVariables[sourceVariable];
+    if (compactedVariables.count(sourceVariable) == 1)
+    {
+        // test variable compaction succeeded.
+        report.setCompactedVariable(compactedVariables[sourceVariable]);
+        return compactedVariables[sourceVariable];
+    }
     return NULL;
 }
 
@@ -407,13 +416,10 @@ int CellmlUtils::compactVariable(iface::cellml_api::CellMLVariable* variable,
     // determine what sort of source variable we are dealing with
     SourceVariableType vt;
     std::wstring mathml = determineSourceVariableType(sourceVariable, vt);
+    /// @todo This might be useful?
+    //report.setSourceVariableType(vt);
     if (! mathml.empty())
     {
-        std::wstringstream rl;
-        rl << L"Source variable: " << sourceVariable->componentName() << L" / "
-           << sourceVariable->name() << L"; is of type: " << variableTypeToString(vt);
-        report.addReportLine(rl.str());
-        rl.str(L"");
         std::wcout << L"Source variable: " << sourceVariable->componentName() << L" / " << sourceVariable->name()
                    << L"; is of type: " << variableTypeToString(vt) << std::endl;
         XmlUtils xutils;
@@ -431,49 +437,27 @@ int CellmlUtils::compactVariable(iface::cellml_api::CellMLVariable* variable,
             std::map<std::wstring, std::wstring> variableMappings;
             for (const auto& n: ciList)
             {
-                rl << L"compacting variable: " << n << L"; from an equation...";
-                report.addReportLine(rl.str());
-                rl.str(L"");
                 std::wcout << L"compacting variable: " << n << L"; from the equation..." << std::endl;
                 ObjRef<iface::cellml_api::CellMLVariable> ciVariable =
                         sourceComponent->variables()->getVariable(n);
                 if (ciVariable)
                 {
-                    ObjRef<iface::cellml_api::CellMLVariable> ciSourceVariable = ciVariable->sourceVariable();
-                    if (ciSourceVariable)
-                    {
-                        report.incrementIndentLevel();
-                        ObjRef<iface::cellml_api::CellMLVariable> ciCompacted =
-                                createCompactedVariable(component, ciSourceVariable, compactedVariables, report);
-                        report.decrementIndentLevel();
-                        if (ciCompacted) variableMappings[n] = ciCompacted->name();
-                        else
-                        {
-                            rl << L"ERROR: something went wrong compacting the source variable "
-                               << L"of a ci variable";
-                            report.addReportLine(rl.str());
-                            rl.str(L"");
-                            std::wcerr << L"ERROR: something went wrong compacting the source "
-                                       << L"variable of a ci variable" << std::endl;
-                            returnCode = -7;
-                            break;
-                        }
-                    }
+                    ObjRef<iface::cellml_api::CellMLVariable> ciCompacted =
+                            createCompactedVariable(component, ciVariable, compactedVariables, report);
+                    if (ciCompacted) variableMappings[n] = ciCompacted->name();
                     else
                     {
-                        rl << L"ERROR: unable to get the source variable for a ci variable";
-                        report.addReportLine(rl.str());
-                        rl.str(L"");
-                        std::wcerr << L"ERROR: unable to get the source variable for a ci variable" << std::endl;
-                        returnCode = -5;
+                        report.setErrorMessage(
+                                    L"ERROR: something went wrong compacting a ci variable");
+                        std::wcerr << L"ERROR: something went wrong compacting the source "
+                                   << L"variable of a ci variable" << std::endl;
+                        returnCode = -7;
                         break;
                     }
                 }
                 else
                 {
-                    rl << L"ERROR: unable to get the ci variable in the source component.";
-                    report.addReportLine(rl.str());
-                    rl.str(L"");
+                    report.setErrorMessage(L"ERROR: unable to get the ci variable in the source component.");
                     std::wcerr << L"ERROR: unable to get the ci variable in the source component." << std::endl;
                     returnCode = -6;
                     break;

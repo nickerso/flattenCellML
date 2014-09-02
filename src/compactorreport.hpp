@@ -1,41 +1,44 @@
 #ifndef COMPACTORREPORT_HPP
 #define COMPACTORREPORT_HPP
 
-#include <string>
-#include <sstream>
+#include <map>
+#include <vector>
+
+#include <IfaceCellML_APISPEC.hxx>
+#include <cellml-api-cxx-support.hpp>
+
+typedef std::pair<ObjRef<iface::cellml_api::CellMLVariable>, ObjRef<iface::cellml_api::CellMLVariable> > VariablePair;
+typedef std::vector<ObjRef<iface::cellml_api::CellMLVariable> > VariableVector;
+typedef std::vector<VariablePair> VariablePairVector;
+typedef std::map<ObjRef<iface::cellml_api::CellMLVariable>, VariablePair> VariablePairMap;
+typedef std::map<ObjRef<iface::cellml_api::CellMLVariable>, VariableVector> VariableVectorMap;
+typedef std::map<ObjRef<iface::cellml_api::CellMLVariable>, VariablePairVector> VariablePairVectorMap;
 
 class CompactorReport
 {
 public:
     CompactorReport();
 
-    std::wstring getReport() const
+    void setSourceModel(iface::cellml_api::Model* model);
+    void setCurrentSourceModelVariable(iface::cellml_api::CellMLVariable* variable);
+    void setVariableForCompaction(iface::cellml_api::CellMLVariable* variable,
+                                  iface::cellml_api::CellMLVariable* sourceVariable);
+    void setCompactedVariable(iface::cellml_api::CellMLVariable* variable);
+
+    void setErrorMessage(const std::wstring& msg)
     {
-        return mReport.str();
+        mErrorMessage = msg;
     }
 
-    std::wstring getIndentString() const;
-    void setIndentString(const std::wstring& value);
-
-    int getIndentLevel() const;
-    void setIndentLevel(int value);
-
-    void addReportLine(const std::wstring& line);
-
-    void incrementIndentLevel()
-    {
-        ++mIndentLevel;
-    }
-
-    void decrementIndentLevel()
-    {
-        --mIndentLevel;
-    }
+    std::wstring getReport() const;
 
 private:
-    std::wstringstream mReport;
-    std::wstring mIndentString;
-    int mIndentLevel;
+    ObjRef<iface::cellml_api::Model> mSourceModel;
+    ObjRef<iface::cellml_api::CellMLVariable> mCurrentSourceModelVariable;
+    VariablePairVector mVariableForCompaction; // first = variable requested, second = its source variable being compacted.
+    VariablePairVectorMap mCompactedVariables;
+    VariableVectorMap mCompactedDependencies;
+    std::wstring mErrorMessage;
 };
 
 #endif // COMPACTORREPORT_HPP

@@ -38,13 +38,12 @@ private:
         // always defined in the compated model component
         variable->publicInterface(iface::cellml_api::INTERFACE_IN);
         // and connect it to the source variable
-        ObjRef<iface::cellml_api::CellMLVariable> source = sourceVariable->sourceVariable();
         ObjRef<iface::cellml_api::CellMLVariable> compactedModelSourceVariable =
-                defineCompactedSourceVariable(compactedModel, source, report);
+                defineCompactedSourceVariable(compactedModel, sourceVariable, report);
         if (compactedModelSourceVariable == NULL)
         {
-            std::wcerr << L"ERROR compacting source variable: " << source->componentName() << L" / "
-                       << source->name() << std::endl;
+            std::wcerr << L"ERROR compacting variable: " << sourceVariable->componentName() << L" / "
+                       << sourceVariable->name() << std::endl;
             return -1;
         }
         mCellml.connectVariables(compactedModelSourceVariable, variable);
@@ -53,21 +52,18 @@ private:
 
     ObjRef<iface::cellml_api::CellMLVariable>
     defineCompactedSourceVariable(iface::cellml_api::CellMLComponent* compactedModel,
-                                  iface::cellml_api::CellMLVariable* sourceVariable,
+                                  iface::cellml_api::CellMLVariable* variable,
                                   CompactorReport& report)
     {
         // hand over to the CellML utils...
-        return mCellml.createCompactedVariable(compactedModel, sourceVariable, mSourceVariables, report);
+        return mCellml.createCompactedVariable(compactedModel, variable, mSourceVariables, report);
     }
 
 public:
     ObjRef<iface::cellml_api::Model> CompactModel(iface::cellml_api::Model* modelIn, CompactorReport& report)
     {
         std::wstring modelName = modelIn->name();
-        std::wstringstream rl;
-        rl << L"Compacting model " << modelName << L" to a single CellML 1.0 component.";
-        report.addReportLine(rl.str());
-        rl.str(L"");
+        report.setSourceModel(modelIn);
         std::wcout << L"Compacting model " << modelName << L" to a single CellML 1.0 component."
                    << std::endl;
         // grab a clone of the source model before we do anything that might instantiate imports.
@@ -100,10 +96,6 @@ public:
             ObjRef<iface::cellml_api::CellMLComponent> lc = lci->nextComponent();
             if (lc == NULL) break;
             cname = lc->name();
-            rl << L"Adding variables from original model component: " << cname << L"; to the new model.";
-            report.addReportLine(rl.str());
-            rl.str(L"");
-            report.incrementIndentLevel();
             std::wcout << L"Adding variables from component: " << cname << L"; to the new model."
                           << std::endl;
             ObjRef<iface::cellml_api::CellMLVariableSet> vs = lc->variables();
@@ -114,18 +106,11 @@ public:
                 if (v == NULL) break;
                 vname = v->name();
                 tmpName = mCellml.uniqueVariableName(cname, vname);
-                rl << vname << L" is represented as: " << tmpName;
-                report.addReportLine(rl.str());
-                rl.str(L"");
-                report.incrementIndentLevel();
+                report.setCurrentSourceModelVariable(v);
                 std::wcout << L"\t" << vname << L" ==> " << tmpName << std::endl;
                 if (mapLocalVariable(v, localComponent, compactedComponent, report) == 0)
                 {
                     ObjRef<iface::cellml_api::CellMLVariable> source = v->sourceVariable();
-                    rl << L"and maps to the source variable: " << source->componentName()
-                       << L" / " << source->name();
-                    report.addReportLine(rl.str());
-                    rl.str(L"");
                     std::wcout << L"\t\tmapped to source: " << source->name() << std::endl;
                 }
                 else
@@ -134,9 +119,7 @@ public:
                                << std::endl;
                     return NULL;
                 }
-                report.decrementIndentLevel();
             }
-            report.decrementIndentLevel();
         }
         // serialise the generated model to a string to catch any special annotations we might
         // have created.
