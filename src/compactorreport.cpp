@@ -54,10 +54,13 @@ std::wstring CompactorReport::getReport() const
         {
             ObjRef<iface::cellml_api::CellMLVariable> variable = mVariableForCompaction[i].first;
             ObjRef<iface::cellml_api::CellMLVariable> srcVariable = mVariableForCompaction[i].second;
+            std::wstring modelUri = variable->modelElement()->base_uri()->asText();
+            std::wstring srcModelUri = srcVariable->modelElement()->base_uri()->asText();
             for (int j=0;j<i;++j) indent += L"\t";
-            report << indent << L"Compaction requested for variable: " << variable->componentName() << L" / "
+            report << indent << L"Compaction requested for variable: " << modelUri << L" # "
+                   << variable->componentName() << L" / "
                    << variable->name() << L";\n" << indent << L"with the actual source variable being: "
-                   << srcVariable->componentName() << L" / " << srcVariable->name() << L"\n";
+                   << srcModelUri << L" # " << srcVariable->componentName() << L" / " << srcVariable->name() << L"\n";
         }
     }
     report.flush();
