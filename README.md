@@ -11,5 +11,5 @@ Two model flattening algorithms are available:
 
 2. using a new (and in-development) model compaction algorithm.
 
-    Trying to address some of the unsupported features of the VersionConverter class and produce an accurate representation of the mathematical model without worrying about the modularity. Units will all be converted to their canonical representation in the generated model.
+    Trying to address some of the unsupported features of the VersionConverter class and produce an accurate representation of the mathematical model without worrying about the modularity. The compacted model will consist of two components. The first component will contain all the variables defined in the model being compacted, with names altered to be unique within the component. The second component will contain all the variables, math, and initial_value's required to fully define the model (if the source model is successfully compacted). Units will all be converted to their canonical representation in the generated model, and in some places the code tries to ensure compatible units are used. See issues #2, #3, #4, and #6 for some of the known issues when dealing with units.
 
