@@ -50,13 +50,13 @@ std::wstring CompactorReport::getReport() const
     {
         report << L"Some variables have not been compacted.\n"
                << L"Uncompacted variables are given below.\n\n";
-        for (int i=0; i<mVariableForCompaction.size(); ++i)
+        for (size_t i=0; i<mVariableForCompaction.size(); ++i)
         {
             ObjRef<iface::cellml_api::CellMLVariable> variable = mVariableForCompaction[i].first;
             ObjRef<iface::cellml_api::CellMLVariable> srcVariable = mVariableForCompaction[i].second;
             std::wstring modelUri = variable->modelElement()->base_uri()->asText();
             std::wstring srcModelUri = srcVariable->modelElement()->base_uri()->asText();
-            for (int j=0;j<i;++j) indent += L"\t";
+            for (size_t j=0;j<i;++j) indent += L"\t";
             report << indent << L"Compaction requested for variable: " << modelUri << L" # "
                    << variable->componentName() << L" / "
                    << variable->name() << L";\n" << indent << L"with the actual source variable being: "
